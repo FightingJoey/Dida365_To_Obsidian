@@ -69,13 +69,13 @@ class TaskExporter:
         获取优先级标记
         """
         if priority == 1:
-            return "⭐"
+            return "🔽"
         elif priority == 3:
-            return "⭐⭐"
+            return "🔼"
         elif priority == 5:
-            return "⭐⭐⭐"
+            return "⏫"
         else:
-            return ""
+            return "⏬"
     
     def export_project_tasks(self, project_id: str = ''):
         """
@@ -160,8 +160,6 @@ class TaskExporter:
         # 添加任务列表
         if tasks:
             content += "## 任务列表\n\n"
-            content += "| ID | 任务标题 | 优先级 | 截止日期 |\n"
-            content += "| --- | --- | --- | --- |\n"
             # 按优先级和创建时间排序
             sorted_tasks = sorted(tasks, 
                                 key=lambda x: (-x.priority if x.priority else 0, 
@@ -170,7 +168,10 @@ class TaskExporter:
             for task in sorted_tasks:
                 priority_mark = self._get_priority_mark(task.priority if task.priority else 0)
                 task_due_date = self._format_time(task.dueDate, "%Y-%m-%d")
-                content += f"| [[{task.id}]] | {task.title} | {priority_mark} | {task_due_date} |\n"
+                if task_due_date == None:
+                    content += f"- [ ] [[{task.id}|{task.title}]] | {priority_mark}\n"
+                else:
+                    content += f"- [ ] [[{task.id}|{task.title}]] | {priority_mark} | 📅 {task_due_date}\n"
         
         # 写入文件
         # 如果文件存在，先删除

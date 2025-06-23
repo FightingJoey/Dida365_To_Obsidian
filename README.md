@@ -9,18 +9,21 @@ Dida365 To Obsidian 是一个专门用于将滴答清单中的任务和项目数
 ## ✨ 主要功能
 
 ### 🔄 数据导出
+
 - **任务导出**：将滴答清单中的未完成任务导出为独立的 Markdown 文件
 - **项目索引**：为每个项目生成包含任务列表的索引文件
 - **智能链接**：自动生成任务间的父子关系链接，支持 `[[id|title]]` 格式
 - **时间格式化**：自动将时间转换为北京时间，支持多种时间格式
 
 ### 📊 数据结构
+
 - **任务详情**：包含标题、描述、优先级、截止时间、创建时间等完整信息
 - **任务关系**：支持父子任务关系，自动生成关联链接
 - **项目组织**：按项目分类组织任务，生成项目索引文件
-- **优先级显示**：使用星级标记显示任务优先级（⭐、⭐⭐、⭐⭐⭐）
+- **优先级显示**：使用特殊符号标记显示任务优先级（⏬、🔽、🔼、⏫）
 
 ### 🎯 Obsidian 集成
+
 - **Front Matter**：每个任务文件包含完整的元数据
 - **双向链接**：支持 Obsidian 的双向链接功能
 - **表格展示**：使用 Markdown 表格展示任务列表
@@ -29,10 +32,12 @@ Dida365 To Obsidian 是一个专门用于将滴答清单中的任务和项目数
 ## 🚀 快速开始
 
 ### 环境要求
+
 - Python 3.7+
 - 滴答清单账号
 
 ### 安装依赖
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -40,6 +45,7 @@ pip install -r requirements.txt
 ### 基本使用
 
 1. **克隆项目**
+
 ```bash
 git clone <repository-url>
 cd Dida365_To_Obsidian
@@ -47,14 +53,16 @@ cd Dida365_To_Obsidian
 
 2. **配置账号信息**
 
-**方法1：使用 .env 文件（推荐）**
+**方法 1：使用 .env 文件（推荐）**
 
 复制环境变量示例文件：
+
 ```bash
 cp env.example .env
 ```
 
 编辑 `.env` 文件，填入你的账号信息：
+
 ```bash
 # 你的滴答清单用户名/邮箱
 DIDA365_USERNAME=your_email@example.com
@@ -66,9 +74,10 @@ DIDA365_PASSWORD=your_password
 OUTPUT_DIR=/path/to/output/directory
 ```
 
-**方法2：使用环境变量**
+**方法 2：使用环境变量**
 
 在终端中设置环境变量：
+
 ```bash
 # Linux/macOS
 export DIDA365_USERNAME="your_email@example.com"
@@ -87,6 +96,7 @@ $env:OUTPUT_DIR="C:\path\to\output\directory"
 ```
 
 3. **运行导出**
+
 ```bash
 python TaskExporter.py
 ```
@@ -94,6 +104,7 @@ python TaskExporter.py
 ### 高级使用
 
 #### 导出指定项目
+
 ```python
 from TaskExporter import TaskExporter
 from Dida365Client import Dida365Client
@@ -130,16 +141,22 @@ output_directory/
 ```
 
 ### 任务文件格式
+
 每个任务文件包含：
-- **Front Matter**：任务的元数据信息
+
+- **Front Matter**：任务的元数据信息（包括 title、task_id、project_id、start_date、due_date、priority、status、created_time、modified_time）
 - **任务描述**：任务的详细内容
-- **子任务列表**：以表格形式展示子任务
-- **父任务链接**：指向父任务的链接
+- **任务列表**：任务的子项列表（如果有）
+- **子任务列表**：以表格形式展示子任务（如果有）
+- **父任务信息**：以表格形式展示父任务（如果有）
 
 ### 项目文件格式
+
 每个项目文件包含：
-- **项目信息**：项目的基本信息
-- **任务列表**：以表格形式展示项目下的所有任务
+
+- **Front Matter**：项目的元数据信息（包括 title、project_id、updated_time）
+- **项目标题**：项目的名称
+- **任务列表**：以列表形式展示项目下的所有任务，包含优先级标记和截止日期（如果有）
 
 ## 🔧 API 文档
 
@@ -148,10 +165,15 @@ output_directory/
 滴答清单 API 客户端，提供数据获取功能。
 
 #### 主要方法
-- `get_all_data()`: 获取所有数据（项目、任务、标签）
+
+- `get_all_data()`: 获取所有数据（项目、任务）
 - `get_projects()`: 获取项目列表
+- `get_project_tasks(project_id, to_date, limit=50)`: 获取项目中的任务列表
 - `get_task(task_id)`: 获取指定任务信息
-- `get_completed_tasks()`: 获取已完成任务
+- `get_completed_tasks(from_date, to_date, limit=50)`: 获取已完成任务
+- `get_abandoned_tasks(status="Abandoned", limit=10)`: 获取已放弃任务
+- `get_task_comments(project_id, task_id)`: 获取任务评论
+- `get_trash_tasks()`: 获取垃圾箱任务
 - `get_habits()`: 获取习惯列表
 
 ### TaskExporter
@@ -159,24 +181,29 @@ output_directory/
 任务导出器，负责将数据转换为 Markdown 格式。
 
 #### 主要方法
-- `export_project_tasks(project_id='')`: 导出项目任务
-- `_create_task_markdown(task, task_dict)`: 创建单个任务文件
+
+- `export_project_tasks(project_id='')`: 导出项目任务，如果不指定 project_id 则导出所有项目
+- `_create_task_markdown(task, task_dict)`: 创建单个任务文件，支持增量更新
 - `_create_project_index(project, tasks, project_dir)`: 创建项目索引文件
+- `_format_time(time_str, time_format="%Y-%m-%d %H:%M:%S")`: 格式化时间字符串
+- `_get_priority_mark(priority)`: 获取优先级标记
 
 ### Types
 
 数据模型定义，包含 Task、Project、Tag 三个主要类。
 
 #### Task 类
+
 包含任务的所有属性：
+
 - `id`: 任务唯一标识
 - `title`: 任务标题
-- `projectId`: 所属项目ID
+- `projectId`: 所属项目 ID
 - `priority`: 优先级（1-5）
 - `dueDate`: 截止时间
 - `content`: 任务描述
-- `childIds`: 子任务ID列表
-- `parentId`: 父任务ID
+- `childIds`: 子任务 ID 列表
+- `parentId`: 父任务 ID
 
 ## 🔒 安全说明
 
@@ -189,7 +216,9 @@ output_directory/
 ## 📝 配置选项
 
 ### 输出目录配置
+
 输出目录的优先级顺序：
+
 1. **参数传入**：`TaskExporter(client, "/path/to/output")`
 2. **环境变量**：`OUTPUT_DIR="/path/to/output"`（可在 `.env` 文件中设置）
 3. **当前目录**：使用脚本文件所在目录
@@ -207,7 +236,9 @@ exporter = TaskExporter(client)
 ```
 
 ### 时间格式
+
 支持自定义时间格式：
+
 ```python
 # 默认格式：YYYY-MM-DD HH:MM:SS
 formatted_time = self._format_time(time_str)
@@ -217,17 +248,20 @@ formatted_time = self._format_time(time_str, "%Y-%m-%d")
 ```
 
 ### 优先级显示
+
 优先级标记规则：
-- 优先级 1：⭐
-- 优先级 3：⭐⭐  
-- 优先级 5：⭐⭐⭐
-- 其他：无标记
+
+- 低优先级：🔽
+- 中优先级：🔼
+- 高优先级：⏫
+- 无优先级：⏬
 
 ## 🤝 贡献指南
 
 欢迎提交 Issue 和 Pull Request！
 
 ### 开发环境设置
+
 1. Fork 项目
 2. 创建功能分支
 3. 提交更改
@@ -247,8 +281,9 @@ formatted_time = self._format_time(time_str, "%Y-%m-%d")
 ## 📞 联系方式
 
 如有问题或建议，请通过以下方式联系：
+
 - 提交 GitHub Issue
-- 发送邮件至：[your-email@example.com]
+- 发送邮件至：[devqiaoyu@aliyun.com]
 
 ---
 
