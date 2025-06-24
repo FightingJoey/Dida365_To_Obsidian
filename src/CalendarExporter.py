@@ -234,15 +234,17 @@ class CalendarExporter(BaseExporter):
         # 添加习惯打卡
         if habits:
             content += "## 习惯打卡\n\n"
+            done_date = ""
             for habit in habits:
                 checked = False
                 if checkins and 'checkins' in checkins and habit.id in checkins['checkins']:
                     for c in checkins['checkins'][habit.id]:
                         if c.get('checkinStamp') == today_stamp and c.get('status') == 2:
                             checked = True
+                            done_date = self._format_time(c.get('checkinTime'), "%Y-%m-%d")
                             break
                 if checked:
-                    content += f"- [x] {habit.name}\n"
+                    content += f"- [x] {habit.name} | ✅ {done_date}\n"
                 else:
                     content += f"- [ ] {habit.name}\n"
             content += "\n"
