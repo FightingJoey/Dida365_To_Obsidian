@@ -241,7 +241,7 @@ class CalendarExporter:
         tasks = self._get_tasks_in_date_range(start_date, end_date)
         
         # 创建文件名
-        filename = f"{date.strftime('%Y-%m-%d')}.md"
+        filename = f"Dida365:{date.strftime('%Y-%m-%d')}.md"
         filepath = os.path.join(self.daily_dir, filename)
         
         # 准备文件内容
@@ -289,7 +289,7 @@ class CalendarExporter:
         start_date = datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0)
         end_date = start_date + timedelta(days=6, hours=23, minutes=59, seconds=59)
         tasks = self._get_tasks_in_date_range(start_date, end_date)
-        filename = f"{start_date.strftime('%Y-W%W')}.md"
+        filename = f"Dida365:{start_date.strftime('%Y-W%W')}.md"
         filepath = os.path.join(self.weekly_dir, filename)
         content = f"# {start_date.strftime('%Y')} 第 {start_date.strftime('%W')} 周任务摘要\n\n"
         content += f"**周期**：{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}\n\n"
@@ -342,7 +342,7 @@ class CalendarExporter:
         else:
             end_date = datetime(date.year, date.month + 1, 1) - timedelta(seconds=1)
         tasks = self._get_tasks_in_date_range(start_date, end_date)
-        filename = f"{date.strftime('%Y-%m')}.md"
+        filename = f"Dida365:{date.strftime('%Y-%m')}.md"
         filepath = os.path.join(self.monthly_dir, filename)
         content = f"# {date.strftime('%Y-%m')} 月任务摘要\n\n"
         if tasks:

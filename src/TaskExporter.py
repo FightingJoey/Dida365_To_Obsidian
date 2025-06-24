@@ -9,15 +9,17 @@ from Types import Task, Project
 load_dotenv()
 
 class TaskExporter:
-    def __init__(self, client: Dida365Client, output_dir: Optional[str] = None):
+    def __init__(self, client: Dida365Client, output_dir: Optional[str] = None, unified_index: bool = True):
         """
         初始化任务导出器
         
         参数:
             client: Dida365Client 实例
             output_dir: markdown 文件输出目录，如果不提供则从环境变量 OUTPUT_DIR 获取，如果都没有则使用当前目录
+            unified_index: 是否只生成一个统一的项目索引文件 AllProjects.md ，所有项目内容都写入该文件，默认 True
         """
         self.client = client
+        self.unified_index = unified_index
         
         # 确定输出目录：参数 > 环境变量 > 当前目录
         if output_dir:
@@ -31,15 +33,15 @@ class TaskExporter:
         # 确保 output_dir 不为 None
         assert self.output_dir is not None, "输出目录不能为空"
         
-        self.tasks_dir = os.path.join(self.output_dir, "tasks")
-        self.project_dir = os.path.join(self.output_dir, "projects")
+        self.tasks_dir = os.path.join(self.output_dir, "Tasks")
+        self.project_dir = os.path.join(self.output_dir, "Projects")
         
         # 确保输出目录存在
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
         if not os.path.exists(self.tasks_dir):
             os.makedirs(self.tasks_dir)
-        if not os.path.exists(self.project_dir):
+        if not os.path.exists(self.project_dir) and not unified_index:
             os.makedirs(self.project_dir)
     
     def _format_time(self, time_str: Optional[str], time_format: str = "%Y-%m-%d %H:%M:%S") -> Optional[str]:
@@ -116,17 +118,32 @@ class TaskExporter:
                 print(f"未找到项目: {project_id}")
                 return
         
-        # 为每个项目创建项目文件并关联任务
-        for project in projects:
-            # 获取该项目下的未完成任务
-            project_tasks = [task for task in unfinished_tasks if task.projectId == project.id]
-            
-            # 创建项目索引文件
-            self._create_project_index(project, project_tasks, self.project_dir)
-            
-            # 导出该项目的任务
-            for task in project_tasks:
-                self._create_task_markdown(task, task_dict)
+        # 统一索引模式
+        if self.unified_index:
+            all_content = "# 所有项目任务索引\n\n"
+            for project in projects:
+                # 获取该项目下的未完成任务
+                project_tasks = [task for task in unfinished_tasks if task.projectId == project.id]
+                all_content += self._get_project_index_content(project, project_tasks)
+            index_path = os.path.join(self.output_dir, "TasksInbox.md")
+            if os.path.exists(index_path):
+                os.remove(index_path)
+            with open(index_path, 'w', encoding='utf-8') as f:
+                f.write(all_content)
+            print(f"已创建统一项目索引文件: TasksInbox.md")
+            # 依然导出单个任务文件
+            for project in projects:
+                project_tasks = [task for task in unfinished_tasks if task.projectId == project.id]
+                for task in project_tasks:
+                    self._create_task_markdown(task, task_dict)
+        else:
+            # 原有分项目索引逻辑
+            for project in projects:
+                # 获取该项目下的未完成任务
+                project_tasks = [task for task in unfinished_tasks if task.projectId == project.id]
+                self._create_project_index(project, project_tasks, self.project_dir)
+                for task in project_tasks:
+                    self._create_task_markdown(task, task_dict)
     
     def _create_project_index(self, project: Project, tasks: List[Task], project_dir: str):
         """
@@ -281,6 +298,23 @@ class TaskExporter:
             f.write(content)
         
         print(f"已创建任务文件: {filename}")
+
+    def _get_project_index_content(self, project: Project, tasks: List[Task]) -> str:
+        """
+        返回某个项目的索引内容（不写入文件，仅返回字符串）
+        """
+        content = f"# {project.name}\n\n"
+        if tasks:
+            sorted_tasks = sorted(tasks, key=lambda x: (-x.priority if x.priority else 0, x.createdTime if x.createdTime else ""))
+            for task in sorted_tasks:
+                priority_mark = self._get_priority_mark(task.priority if task.priority else 0)
+                task_due_date = self._format_time(task.dueDate, "%Y-%m-%d")
+                if task_due_date is None:
+                    content += f"- [ ] [[{task.id}|{task.title}]] | {priority_mark}\n"
+                else:
+                    content += f"- [ ] [[{task.id}|{task.title}]] | {priority_mark} | 📅 {task_due_date}\n"
+        content += "\n"
+        return content
 
 # 使用示例
 if __name__ == "__main__":
