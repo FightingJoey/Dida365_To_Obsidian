@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  dida365-obsidian:
+    build: .
+    container_name: dida365-obsidian
+    # 挂载主机 output 目录到容器 /output，实现数据持久化
+    volumes:
+      - ./output:/output
+    # 可选：挂载自定义 crontab 文件
+    # - ./my_crontab:/etc/cron.d/dida_cron
+    # 环境变量配置（推荐用 .env 文件，或直接写在这里）
+    env_file:
+      - .env
+    # 也可直接写环境变量
+    # environment:
+    #   DIDA365_USERNAME: your_email@example.com
+    #   DIDA365_PASSWORD: your_password
+    restart: unless-stopped
+    # 可选：限制资源
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.50'
+    #       memory: 256M
+# =====================
+# 使用说明（中文）：
+# 1. 在项目根目录准备 .env 文件，内容如：
+#    DIDA365_USERNAME=xxx
+#    DIDA365_PASSWORD=xxx
+# 2. 启动服务：
+#    docker-compose up -d
+# 3. 输出文件在 ./output 目录
+# 4. 如需自定义定时任务，挂载自定义 crontab 文件到 /etc/cron.d/dida_cron
+# =====================

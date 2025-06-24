@@ -171,6 +171,7 @@ if __name__ == "__main__":
     # export DIDA365_PASSWORD="your_password"
     try:
         client = Dida365Client()
+        client.login()
     except ValueError as e:
         print(f"环境变量配置错误: {e}")
         exit(1)
@@ -181,24 +182,24 @@ if __name__ == "__main__":
     #     password="your_password"
     # )
     
-    try:
-        # 获取所有项目
-        projects = client.get_projects()
-        print(f"获取到 {len(projects)} 个项目")
+    # try:
+    #     # 获取所有项目
+    #     projects = client.get_projects()
+    #     print(f"获取到 {len(projects)} 个项目")
         
-        # 获取第一个项目ID
-        if projects:
-            first_project_id = projects[0]["id"]
+    #     # 获取第一个项目ID
+    #     if projects:
+    #         first_project_id = projects[0]["id"]
             
-            # 获取项目任务
-            tasks = client.get_project_tasks(
-                project_id=first_project_id,
-                to_date="2025-06-08 15:50:23"
-            )
-            print(f"获取到 {len(tasks)} 个任务")
+    #         # 获取项目任务
+    #         tasks = client.get_project_tasks(
+    #             project_id=first_project_id,
+    #             to_date="2025-06-08 15:50:23"
+    #         )
+    #         print(f"获取到 {len(tasks)} 个任务")
             
-            # 获取习惯列表
-            habits = client.get_habits()
-            print(f"获取到 {len(habits)} 个习惯")
-    except Exception as e:
-        print(f"API 调用失败: {e}")
+    #         # 获取习惯列表
+    #         habits = client.get_habits()
+    #         print(f"获取到 {len(habits)} 个习惯")
+    # except Exception as e:
+    #     print(f"API 调用失败: {e}")

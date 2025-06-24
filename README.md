@@ -33,6 +33,9 @@ Dida365_To_Obsidian/
 ├── requirements.txt
 ├── env.example
 ├── README.md
+├── Dockerfile
+├── docker-compose.yml
+├── docker_crontab
 └── ...
 ```
 
@@ -57,12 +60,80 @@ pip install -r requirements.txt
 ```
 DIDA365_USERNAME=your_email@example.com
 DIDA365_PASSWORD=your_password
-OUTPUT_DIR=/path/to/output
+OUTPUT_DIR=/output
 DIDA365_TOKEN=None
 DIDA365_INBOX_ID=None
 ```
 
 优先级顺序：参数传入 > 环境变量 > `.env` 文件 > 当前目录。
+
+---
+
+## 🐳 Docker 部署
+
+本项目支持极简 Docker 镜像和一键 Docker Compose 部署，适合服务器、NAS、树莓派等多平台自动化运行。
+
+### 1. 使用 Dockerfile 构建和运行
+
+#### 构建多架构镜像（支持 armv7/arm64/amd64）
+
+```bash
+docker buildx build --platform linux/arm/v7,linux/arm64,linux/amd64 -t dida365-obsidian:latest .
+```
+
+#### 运行容器并挂载输出目录
+
+```bash
+docker run -d \
+  -e DIDA365_USERNAME=你的账号 \
+  -e DIDA365_PASSWORD=你的密码 \
+  -v /your/output:/output \
+  dida365-obsidian:latest
+```
+
+- 输出文件会自动写入主机 `/your/output` 目录。
+- 也可通过 `.env` 文件传递账号信息（见下方 Compose 方式）。
+
+#### 定时任务说明
+
+- 容器内已集成 cron，每小时自动执行任务导出和日历摘要，日志写入 `/output/cron.log`。
+- 如需自定义定时任务，可挂载自定义 crontab 文件覆盖 `/etc/cron.d/dida_cron`。
+- 也可进入容器手动执行：
+  ```bash
+  docker exec -it <container_id> python /app/src/TaskExporter.py
+  docker exec -it <container_id> python /app/src/CalendarExporter.py
+  ```
+
+### 2. 使用 Docker Compose 一键部署
+
+#### 步骤
+
+1. 在项目根目录准备 `.env` 文件，内容如：
+   ```
+   DIDA365_USERNAME=你的账号
+   DIDA365_PASSWORD=你的密码
+   ```
+2. 启动服务：
+   ```bash
+   docker-compose up -d
+   ```
+3. 输出文件在 `./output` 目录。
+4. 如需自定义定时任务，挂载自定义 crontab 文件到 `/etc/cron.d/dida_cron`。
+
+#### docker-compose.yml 示例
+
+```yaml
+version: "3.8"
+services:
+  dida365-obsidian:
+    build: .
+    container_name: dida365-obsidian
+    volumes:
+      - ./output:/output
+    env_file:
+      - .env
+    restart: unless-stopped
+```
 
 ---
 
