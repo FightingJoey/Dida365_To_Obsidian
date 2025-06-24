@@ -3,8 +3,9 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from Dida365Client import Dida365Client
 from Types import Task, Project, Habit
+from BaseExporter import BaseExporter
 
-class CalendarExporter:
+class CalendarExporter(BaseExporter):
     """
     日历导出器，用于创建基于时间的任务摘要
     支持按日、周、月导出任务摘要到对应目录
@@ -18,18 +19,8 @@ class CalendarExporter:
             client: Dida365Client 实例
             output_dir: 输出目录，如果不提供则从环境变量 OUTPUT_DIR 获取，如果都没有则使用当前目录
         """
+        super().__init__(output_dir)
         self.client = client
-        
-        # 确定输出目录：参数 > 环境变量 > 当前目录
-        if output_dir:
-            self.output_dir = output_dir
-        elif os.getenv('OUTPUT_DIR'):
-            self.output_dir = os.getenv('OUTPUT_DIR')
-        else:
-            self.output_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        # 确保 output_dir 不为 None
-        assert self.output_dir is not None, "输出目录不能为空"
         
         # 创建日历相关目录
         self.calendar_dir = os.path.join(self.output_dir, "Calendar")
@@ -39,31 +30,7 @@ class CalendarExporter:
         
         # 确保所有目录存在
         for dir_path in [self.calendar_dir, self.daily_dir, self.weekly_dir, self.monthly_dir]:
-            if not os.path.exists(dir_path):
-                os.makedirs(dir_path)
-    
-    def _format_time(self, time_str: Optional[str], time_format: str = "%Y-%m-%d") -> Optional[str]:
-        """格式化时间字符串"""
-        if not time_str:
-            return None
-            
-        try:
-            dt = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
-            beijing_time = dt + timedelta(hours=8)
-            return beijing_time.strftime(time_format)
-        except (ValueError, AttributeError):
-            return None
-    
-    def _get_priority_mark(self, priority: int) -> str:
-        """获取优先级标记"""
-        if priority == 1:
-            return "🔽"
-        elif priority == 3:
-            return "🔼"
-        elif priority == 5:
-            return "⏫"
-        else:
-            return "⏬"
+            self._ensure_dir(dir_path)
     
     def _get_tasks_in_date_range(self, start_date: datetime, end_date: datetime) -> List[Task]:
         """

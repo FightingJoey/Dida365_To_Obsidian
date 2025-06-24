@@ -4,11 +4,12 @@ from typing import List, Optional, Dict
 from dotenv import load_dotenv
 from Dida365Client import Dida365Client
 from Types import Task, Project
+from BaseExporter import BaseExporter
 
 # 加载 .env 文件
 load_dotenv()
 
-class TaskExporter:
+class TaskExporter(BaseExporter):
     def __init__(self, client: Dida365Client, output_dir: Optional[str] = None, unified_index: bool = True):
         """
         初始化任务导出器
@@ -18,66 +19,17 @@ class TaskExporter:
             output_dir: markdown 文件输出目录，如果不提供则从环境变量 OUTPUT_DIR 获取，如果都没有则使用当前目录
             unified_index: 是否只生成一个统一的项目索引文件 AllProjects.md ，所有项目内容都写入该文件，默认 True
         """
+        super().__init__(output_dir)
         self.client = client
         self.unified_index = unified_index
-        
-        # 确定输出目录：参数 > 环境变量 > 当前目录
-        if output_dir:
-            self.output_dir = output_dir
-        elif os.getenv('OUTPUT_DIR'):
-            self.output_dir = os.getenv('OUTPUT_DIR')
-        else:
-            # 使用当前文件所在目录
-            self.output_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        # 确保 output_dir 不为 None
-        assert self.output_dir is not None, "输出目录不能为空"
         
         self.tasks_dir = os.path.join(self.output_dir, "Tasks")
         self.project_dir = os.path.join(self.output_dir, "Projects")
         
         # 确保输出目录存在
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-        if not os.path.exists(self.tasks_dir):
-            os.makedirs(self.tasks_dir)
-        if not os.path.exists(self.project_dir) and not unified_index:
-            os.makedirs(self.project_dir)
-    
-    def _format_time(self, time_str: Optional[str], time_format: str = "%Y-%m-%d %H:%M:%S") -> Optional[str]:
-        """
-        将时间字符串格式化为北京时间
-        
-        参数:
-            time_str: ISO 格式的时间字符串
-            
-        返回:
-            格式化后的时间字符串 (yyyy-MM-dd HH:mm:ss)
-        """
-        if not time_str:
-            return None
-            
-        try:
-            # 处理 ISO 格式的时间字符串
-            dt = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
-            # 转换为北京时间（UTC+8）
-            beijing_time = dt + timedelta(hours=8)
-            return beijing_time.strftime(time_format)
-        except (ValueError, AttributeError):
-            return None
-
-    def _get_priority_mark(self, priority: int) -> str:
-        """
-        获取优先级标记
-        """
-        if priority == 1:
-            return "🔽"
-        elif priority == 3:
-            return "🔼"
-        elif priority == 5:
-            return "⏫"
-        else:
-            return "⏬"
+        self._ensure_dir(self.tasks_dir)
+        if not self.unified_index:
+            self._ensure_dir(self.project_dir)
     
     def export_project_tasks(self, project_id: str = ''):
         """
