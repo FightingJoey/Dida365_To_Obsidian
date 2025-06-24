@@ -203,7 +203,7 @@ class CalendarExporter:
             return f"📅 至 {end_date}"
         return ""
     
-    def _format_task_line(self, task: Task, index: int = None, ordered: bool = False) -> str:
+    def _format_task_line(self, task: Task, index: Optional[int] = None, ordered: bool = False) -> str:
         """格式化单个任务行。待办任务可用有序数字列表。"""
         priority_mark = self._get_priority_mark(task.priority if task.priority else 0)
         time_range = self._format_task_time_range(task)
@@ -214,6 +214,10 @@ class CalendarExporter:
             line = f"- [{checkbox}] [[{task.id}|{task.title}]] | {priority_mark}"
         if time_range:
             line += f" | {time_range}"
+        # 对于已完成任务，添加 ✅ 和完成日期
+        if task.status == 2:
+            done_date = self._format_time(task.completedTime, "%Y-%m-%d")
+            line += f" | ✅ {done_date}"
         return line
     
     def export_daily_summary(self, date: Optional[datetime] = None):
@@ -316,8 +320,8 @@ class CalendarExporter:
                 # 已完成
                 if tasks_by_day[day]['done']:
                     content += "\n### 已完成任务\n\n"
-                    for task in sorted(tasks_by_day[day]['done'], key=lambda x: -(x.priority if x.priority else 0)):
-                        content += self._format_task_line(task) + "\n"
+                    for idx, task in enumerate(sorted(tasks_by_day[day]['done'], key=lambda x: -(x.priority if x.priority else 0)), 1):
+                        content += self._format_task_line(task, idx, ordered=True) + "\n"
                 content += "\n"
         else:
             content += "本周没有任务。\n"
@@ -368,8 +372,8 @@ class CalendarExporter:
                 # 已完成
                 if done_tasks:
                     content += "\n### 已完成任务\n\n"
-                    for task in sorted(done_tasks, key=lambda x: -(x.priority if x.priority else 0)):
-                        content += self._format_task_line(task) + "\n"
+                    for idx, task in enumerate(sorted(done_tasks, key=lambda x: -(x.priority if x.priority else 0)), 1):
+                        content += self._format_task_line(task, idx, ordered=True) + "\n"
                 content += "\n"
         else:
             content += "本月没有任务。\n"

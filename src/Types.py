@@ -195,6 +195,9 @@ class Task:
         
         # 最后修改时间（ISO 8601格式字符串）
         self.modifiedTime = None  
+
+        # 任务完成时间（ISO 8601格式字符串）
+        self.completedTime = None
         
         # 标签列表（数组，存储字符串类型的标签）
         self.tags = None  
