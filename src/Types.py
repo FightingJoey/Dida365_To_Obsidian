@@ -224,3 +224,76 @@ class Task:
             dict: 包含任务非空属性的字典
         """
         return {key: value for key, value in self.__dict__.items() if value is not None}        
+
+class Habit:
+    """
+    习惯类，表示滴答清单中的一个习惯
+    包含习惯的所有属性，如名称、颜色、打卡次数、提醒等，并提供序列化方法
+    """
+    def __init__(self, habit_dict=None):
+        """
+        初始化习惯对象
+        参数:
+            habit_dict: 包含习惯属性的字典，如果提供则用其初始化习惯对象
+        """
+        # 习惯ID
+        self.id = None
+        # 习惯名称
+        self.name = None
+        # 图标资源名
+        self.iconRes = None
+        # 习惯颜色
+        self.color = None
+        # 排序顺序
+        self.sortOrder = None
+        # 状态（0=启用，1=归档）
+        self.status = None
+        # 鼓励语
+        self.encouragement = None
+        # 总打卡次数
+        self.totalCheckIns = None
+        # 创建时间（ISO 8601字符串）
+        self.createdTime = None
+        # 修改时间（ISO 8601字符串）
+        self.modifiedTime = None
+        # 归档时间（ISO 8601字符串）
+        self.archivedTime = None
+        # 类型（如 Boolean）
+        self.type = None
+        # 目标值
+        self.goal = None
+        # 步长
+        self.step = None
+        # 单位
+        self.unit = None
+        # etag
+        self.etag = None
+        # 重复规则（如 RRULE:FREQ=WEEKLY...）
+        self.repeatRule = None
+        # 提醒时间列表
+        self.reminders = None
+        # 是否启用记录（字符串 'True'/'False'）
+        self.recordEnable = None
+        # 分区ID
+        self.sectionId = None
+        # 目标天数
+        self.targetDays = None
+        # 目标开始日期（如 20250403）
+        self.targetStartDate = None
+        # 已完成周期数
+        self.completedCycles = None
+        # 排除日期
+        self.exDates = None
+        # 风格（如 1）
+        self.style = None
+        # 如果提供了字典，则更新对象的属性
+        if habit_dict:
+            self.__dict__.update(habit_dict)
+    
+    def to_dict(self):
+        """
+        将习惯对象转换为字典，过滤掉值为None的属性
+        返回:
+            dict: 包含习惯非空属性的字典
+        """
+        return {key: value for key, value in self.__dict__.items() if value is not None}

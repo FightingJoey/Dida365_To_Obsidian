@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from Dida365Client import Dida365Client
-from Types import Task, Project
+from Types import Task, Project, Habit
 
 class CalendarExporter:
     """
@@ -243,15 +243,47 @@ class CalendarExporter:
         # 创建文件名
         filename = f"Dida365:{date.strftime('%Y-%m-%d')}.md"
         filepath = os.path.join(self.daily_dir, filename)
-        
         # 准备文件内容
-        content = f"# {date.strftime('%Y-%m-%d')} 任务摘要\n\n"
+        content = f"# {date.strftime('%Y-%m-%d')} 摘要\n\n"
+
+        # 获取习惯数据
+        habits_data = self.client.get_habits()
+        habits = []
+        if isinstance(habits_data, list):
+            for h in habits_data:
+                habit = Habit(h)
+                if getattr(habit, 'status', None) == 0:
+                    habits.append(habit)
+        # 计算 stamp（前一天）
+        prev_day = start_date - timedelta(days=1)
+        stamp = prev_day.strftime("%Y%m%d")
+        # 获取 habit_ids
+        habit_ids = [habit.id for habit in habits]
+        # 获取 checkins
+        checkins = self.client.get_habits_checkins(stamp, habit_ids)
+        # 获取当天的 stamp
+        today_stamp = int(start_date.strftime("%Y%m%d"))
+        
+        # 添加习惯打卡
+        if habits:
+            content += "## 习惯打卡\n\n"
+            for habit in habits:
+                checked = False
+                if checkins and 'checkins' in checkins and habit.id in checkins['checkins']:
+                    for c in checkins['checkins'][habit.id]:
+                        if c.get('checkinStamp') == today_stamp and c.get('status') == 2:
+                            checked = True
+                            break
+                if checked:
+                    content += f"- [x] {habit.name}\n"
+                else:
+                    content += f"- [ ] {habit.name}\n"
+            content += "\n"
         
         if tasks:
             # 分离待办和已完成任务
             todo_tasks = [t for t in tasks if t.status == 0]
             done_tasks = [t for t in tasks if t.status == 2]
-            
             # 输出待办任务
             if todo_tasks:
                 content += "## 待办任务\n\n"
@@ -260,7 +292,6 @@ class CalendarExporter:
                 for idx, task in enumerate(sorted_tasks, 1):
                     content += self._format_task_line(task, idx, ordered=True) + "\n"
                 content += "\n"
-            
             # 输出已完成任务
             if done_tasks:
                 content += "## 已完成任务\n\n"
@@ -271,11 +302,9 @@ class CalendarExporter:
                 content += "\n"
         else:
             content += "今日没有任务。\n"
-        
         # 写入文件
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
-        
         print(f"已创建每日摘要：{filename}")
     
     def export_weekly_summary(self, date: Optional[datetime] = None):

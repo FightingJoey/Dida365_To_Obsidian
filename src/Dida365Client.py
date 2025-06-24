@@ -155,6 +155,14 @@ class Dida365Client:
         """获取习惯列表"""
         return self._make_request("GET", "habits")
 
+    def get_habits_checkins(self, after_stamp: str, habitIds: []) -> Dict:
+        """获取习惯打卡列表"""
+        data = {
+            "afterStamp": after_stamp,
+            "habitIds": habitIds
+        }
+        return self._make_request("POST", "habitCheckins/query", data=data) 
+
 # 使用示例
 if __name__ == "__main__":
     # 方法1：使用环境变量（推荐）
