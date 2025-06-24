@@ -90,7 +90,7 @@ class TaskExporter:
         tasks = []
 
         inbox = Project()
-        inbox.id = "inbox1013004462"
+        inbox.id = self.client.inbox_id
         inbox.name = "收集箱"
         projects.append(inbox)
 

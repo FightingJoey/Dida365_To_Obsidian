@@ -2,10 +2,12 @@ import requests
 import json
 import os
 from typing import List, Dict, Optional
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 
 # 加载 .env 文件
 load_dotenv()
+
+ENV_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
 
 class Dida365Client:
     def __init__(self, username: Optional[str] = None, password: Optional[str] = None):
@@ -31,19 +33,42 @@ class Dida365Client:
         self.base_url = "https://api.dida365.com/api/v2"
         self.headers = {
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-            "x-device": "{\"platform\":\"web\",\"os\":\"Windows 10\",\"device\":\"Chrome 136.0.0.0\",\"name\":\"\",\"version\":6246,\"id\":\"66c5c4f4efae8477e84eb688\",\"channel\":\"website\",\"campaign\":\"\",\"websocket\":\"67e7de9bf92b296c741567e0\"}"  # 设备信息
+            "x-device": "{\"platform\":\"web\",\"os\":\"Windows 10\",\"device\":\"Chrome 136.0.0.0\",\"name\":\"\",\"version\":6246,\"id\":\"66c5c4f4efae8477e84eb688\",\"channel\":\"website\",\"campaign\":\"\",\"websocket\":\"67e7de9bf92b296c741567e0\"}"
         }
         self.token = None
-        self._login(self.username, self.password)
-        
-    def _login(self, username: str, password: str):
+        self.inbox_id = None
+        # 优先尝试从 .env 读取 token
+        self._load_token_from_env()
+        if not self.token:
+            print("登录获取Token")
+            self.login(self.username, self.password)
+        else:
+            print("使用本地保存的Token")
+            self.headers["Cookie"] = f"t={self.token}"
+
+    def _load_token_from_env(self):
+        self.token = os.getenv("DIDA365_TOKEN")
+        self.inbox_id = os.getenv("DIDA365_INBOX_ID")
+        if self.token == "None":
+            self.token = None
+        if self.inbox_id == "None":
+            self.inbox_id = None
+
+    def _save_token_to_env(self):
+        # 更新 .env 文件中的 DIDA365_TOKEN
+        try:
+            set_key(ENV_FILE, "DIDA365_TOKEN", self.token)
+            set_key(ENV_FILE, "DIDA365_INBOX_ID", self.inbox_id)
+        except Exception as e:
+            print(f"保存 token 到 .env 失败: {e}")
+
+    def login(self, username: str, password: str):
         """登录获取token"""
         url = f"{self.base_url}/user/signon?wc=true&remember=true"
         payload = {
             "password": password,
             "username": username
         }
-        
         response = requests.request(
             "POST",
             url,
@@ -51,23 +76,19 @@ class Dida365Client:
             json=payload
         )
         response.raise_for_status()
-        
         data = response.json()
         self.token = data["token"]
-        self.user_id = data["userId"]
         self.inbox_id = data["inboxId"]
-        
         # 在后续请求中设置Cookie
         self.headers["Cookie"] = f"t={self.token}"
-    
+        self._save_token_to_env()
+
     def _make_request(self, method: str, endpoint: str, params=None, data=None) -> Dict:
         """通用的请求方法"""
         url = f"{self.base_url}/{endpoint}"
-        
         # 处理URL中的路径变量
         url = url.replace("${projectId}", params.get("projectId", "")) if params else url
         url = url.replace("${taskId}", params.get("taskId", "")) if params else url
-        
         response = requests.request(
             method,
             url,
@@ -76,9 +97,8 @@ class Dida365Client:
             json=data
         )
         response.raise_for_status()
-        
         return response.json()
-    
+
     def get_projects(self) -> Dict:
         """获取所有的项目列表"""
         return self._make_request("GET", "projects")
