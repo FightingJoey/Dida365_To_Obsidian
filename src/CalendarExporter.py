@@ -20,6 +20,9 @@ class CalendarExporter(BaseExporter):
             output_dir: 输出目录，如果不提供则从环境变量 OUTPUT_DIR 获取，如果都没有则使用当前目录
         """
         super().__init__(output_dir)
+        
+        assert self.output_dir is not None, "输出目录不能为空"
+
         self.client = client
         
         # 创建日历相关目录

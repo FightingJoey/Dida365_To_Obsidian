@@ -21,9 +21,6 @@ class BaseExporter:
             self.output_dir = os.getenv('OUTPUT_DIR')
         else:
             self.output_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        # 确保 output_dir 不为 None
-        assert self.output_dir is not None, "输出目录不能为空"
     
     def _format_time(self, time_str: Optional[str], time_format: str = "%Y-%m-%d %H:%M:%S") -> Optional[str]:
         """

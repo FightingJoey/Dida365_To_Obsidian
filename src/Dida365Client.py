@@ -35,13 +35,13 @@ class Dida365Client:
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
             "x-device": "{\"platform\":\"web\",\"os\":\"Windows 10\",\"device\":\"Chrome 136.0.0.0\",\"name\":\"\",\"version\":6246,\"id\":\"66c5c4f4efae8477e84eb688\",\"channel\":\"website\",\"campaign\":\"\",\"websocket\":\"67e7de9bf92b296c741567e0\"}"
         }
-        self.token = None
-        self.inbox_id = None
+        self.token: Optional[str] = None
+        self.inbox_id: Optional[str] = None
         # 优先尝试从 .env 读取 token
         self._load_token_from_env()
         if not self.token:
             print("登录获取Token")
-            self.login(self.username, self.password)
+            self.login()
         else:
             print("使用本地保存的Token")
             self.headers["Cookie"] = f"t={self.token}"
@@ -56,18 +56,20 @@ class Dida365Client:
 
     def _save_token_to_env(self):
         # 更新 .env 文件中的 DIDA365_TOKEN
+        assert self.token is not None, "Token不能为空"
+        assert self.inbox_id is not None, "InboxID不能为空"
         try:
             set_key(ENV_FILE, "DIDA365_TOKEN", self.token)
             set_key(ENV_FILE, "DIDA365_INBOX_ID", self.inbox_id)
         except Exception as e:
             print(f"保存 token 到 .env 失败: {e}")
 
-    def login(self, username: str, password: str):
+    def login(self):
         """登录获取token"""
         url = f"{self.base_url}/user/signon?wc=true&remember=true"
         payload = {
-            "password": password,
-            "username": username
+            "password": self.password,
+            "username": self.username
         }
         response = requests.request(
             "POST",
@@ -155,7 +157,7 @@ class Dida365Client:
         """获取习惯列表"""
         return self._make_request("GET", "habits")
 
-    def get_habits_checkins(self, after_stamp: str, habitIds: []) -> Dict:
+    def get_habits_checkins(self, after_stamp: str, habitIds: List) -> Dict:
         """获取习惯打卡列表"""
         data = {
             "afterStamp": after_stamp,

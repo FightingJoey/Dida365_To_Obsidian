@@ -20,6 +20,8 @@ class TaskExporter(BaseExporter):
             unified_index: 是否只生成一个统一的项目索引文件 AllProjects.md ，所有项目内容都写入该文件，默认 True
         """
         super().__init__(output_dir)
+        assert self.output_dir is not None, "输出目录不能为空"
+
         self.client = client
         self.unified_index = unified_index
         
@@ -41,10 +43,11 @@ class TaskExporter(BaseExporter):
         projects = []
         tasks = []
 
-        inbox = Project()
-        inbox.id = self.client.inbox_id
-        inbox.name = "收集箱"
-        projects.append(inbox)
+        if self.client.inbox_id:
+            inbox = Project()
+            inbox.id = self.client.inbox_id
+            inbox.name = "收集箱"
+            projects.append(inbox)
 
         response = self.client.get_all_data()
         
@@ -77,6 +80,7 @@ class TaskExporter(BaseExporter):
                 # 获取该项目下的未完成任务
                 project_tasks = [task for task in unfinished_tasks if task.projectId == project.id]
                 all_content += self._get_project_index_content(project, project_tasks)
+            assert self.output_dir is not None, "输出目录不能为空"
             index_path = os.path.join(self.output_dir, "TasksInbox.md")
             if os.path.exists(index_path):
                 os.remove(index_path)
