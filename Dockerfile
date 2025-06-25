@@ -18,8 +18,8 @@ COPY requirements.txt /app/requirements.txt
 # 创建输出目录（可被宿主机挂载）
 RUN mkdir -p /output
 
-# 拷贝 .env 文件
-COPY .env /app/.env
+# 拷贝示例 .env 文件
+# COPY env.example /app/.env
 
 # 设置环境变量（可由 docker run -e 传入）
 ENV PYTHONUNBUFFERED=1 \
