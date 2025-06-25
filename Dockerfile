@@ -4,6 +4,9 @@ FROM --platform=$BUILDPLATFORM python:3.11-slim AS base
 # 设置工作目录
 WORKDIR /app
 
+# 先复制 requirements.txt
+COPY requirements.txt /app/requirements.txt
+
 # 安装 cron 和必要依赖
 RUN apt-get update \
     && apt-get install -y --no-install-recommends cron \
@@ -13,7 +16,6 @@ RUN apt-get update \
 
 # 复制代码
 COPY src/ /app/src/
-COPY requirements.txt /app/requirements.txt
 
 # 创建输出目录（可被宿主机挂载）
 RUN mkdir -p /output

@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   dida365-obsidian:
-    build: .
+    image: dida365-obsidian:latest
     container_name: dida365-obsidian
     # 挂载主机 output 目录到容器 /output，实现数据持久化
     volumes:
