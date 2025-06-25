@@ -25,8 +25,12 @@ class TaskExporter(BaseExporter):
         self.client = client
         self.unified_index = unified_index
         
-        self.tasks_dir = os.path.join(self.output_dir, "Tasks")
-        self.project_dir = os.path.join(self.output_dir, "Projects")
+        task_dir = os.getenv('TASKS_DIR', 'Tasks')
+        self.tasks_dir = os.path.join(self.output_dir, task_dir)
+        project_dir = os.getenv('PROJECTS_DIR', 'Projects')
+        self.project_dir = os.path.join(self.output_dir, project_dir)
+        tasks_inbox_path = os.getenv('TASKS_INBOX_PATH', 'TasksInbox.md')
+        self.tasks_inbox_path = os.path.join(self.output_dir, tasks_inbox_path)
         
         # 确保输出目录存在
         self._ensure_dir(self.tasks_dir)
@@ -75,13 +79,12 @@ class TaskExporter(BaseExporter):
         
         # 统一索引模式
         if self.unified_index:
-            all_content = "# 所有项目任务索引\n\n"
+            all_content = ""
             for project in projects:
                 # 获取该项目下的未完成任务
                 project_tasks = [task for task in unfinished_tasks if task.projectId == project.id]
                 all_content += self._get_project_index_content(project, project_tasks)
-            assert self.output_dir is not None, "输出目录不能为空"
-            index_path = os.path.join(self.output_dir, "TasksInbox.md")
+            index_path = self.tasks_inbox_path
             if os.path.exists(index_path):
                 os.remove(index_path)
             with open(index_path, 'w', encoding='utf-8') as f:
@@ -140,11 +143,11 @@ class TaskExporter(BaseExporter):
             
             for task in sorted_tasks:
                 priority_mark = self._get_priority_mark(task.priority if task.priority else 0)
-                task_due_date = self._format_time(task.dueDate, "%Y-%m-%d")
-                if task_due_date == None:
+                time_range = self._format_task_time_range(task)
+                if time_range == "":
                     content += f"- [ ] [[{task.id}|{task.title}]] | {priority_mark}\n"
                 else:
-                    content += f"- [ ] [[{task.id}|{task.title}]] | {priority_mark} | 📅 {task_due_date}\n"
+                    content += f"- [ ] [[{task.id}|{task.title}]] | {priority_mark} | {time_range}\n"
         
         # 写入文件
         # 如果文件存在，先删除
@@ -264,11 +267,11 @@ class TaskExporter(BaseExporter):
             sorted_tasks = sorted(tasks, key=lambda x: (-x.priority if x.priority else 0, x.createdTime if x.createdTime else ""))
             for task in sorted_tasks:
                 priority_mark = self._get_priority_mark(task.priority if task.priority else 0)
-                task_due_date = self._format_time(task.dueDate, "%Y-%m-%d")
-                if task_due_date is None:
+                time_range = self._format_task_time_range(task)
+                if time_range == "":
                     content += f"- [ ] [[{task.id}|{task.title}]] | {priority_mark}\n"
                 else:
-                    content += f"- [ ] [[{task.id}|{task.title}]] | {priority_mark} | 📅 {task_due_date}\n"
+                    content += f"- [ ] [[{task.id}|{task.title}]] | {priority_mark} | {time_range}\n"
         content += "\n"
         return content
 

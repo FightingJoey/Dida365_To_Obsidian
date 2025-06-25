@@ -26,10 +26,11 @@ class CalendarExporter(BaseExporter):
         self.client = client
         
         # 创建日历相关目录
-        self.calendar_dir = os.path.join(self.output_dir, "Calendar")
-        self.daily_dir = os.path.join(self.calendar_dir, "Daily")
-        self.weekly_dir = os.path.join(self.calendar_dir, "Weekly")
-        self.monthly_dir = os.path.join(self.calendar_dir, "Monthly")
+        calendar_dir = os.getenv('CALENDAR_DIR', 'Calendar')
+        self.calendar_dir = os.path.join(self.output_dir, calendar_dir)
+        self.daily_dir = os.path.join(self.calendar_dir, "1.Daily")
+        self.weekly_dir = os.path.join(self.calendar_dir, "2.Weekly")
+        self.monthly_dir = os.path.join(self.calendar_dir, "3.Monthly")
         
         # 确保所有目录存在
         for dir_path in [self.calendar_dir, self.daily_dir, self.weekly_dir, self.monthly_dir]:
@@ -146,33 +147,6 @@ class CalendarExporter(BaseExporter):
         
         return tasks
     
-    def _format_task_time_range(self, task: Task) -> str:
-        """
-        格式化任务的时间范围
-        返回格式：
-        - 只有开始时间：📅 从 YYYY-MM-DD 开始
-        - 只有结束时间：📅 至 YYYY-MM-DD
-        - 有开始和结束时间：📅 YYYY-MM-DD ~ YYYY-MM-DD
-        - 没有时间信息：空字符串
-        """
-        start_date = None
-        end_date = None
-        
-        if task.startDate:
-            start_date = self._format_time(task.startDate, "%Y-%m-%d")
-        if task.dueDate:
-            end_date = self._format_time(task.dueDate, "%Y-%m-%d")
-        
-        if start_date and end_date:
-            if start_date == end_date:
-                return f"📅 {start_date}"
-            return f"📅 {start_date} ~ {end_date}"
-        elif start_date:
-            return f"📅 从 {start_date} 开始"
-        elif end_date:
-            return f"📅 至 {end_date}"
-        return ""
-    
     def _format_task_line(self, task: Task, index: Optional[int] = None, ordered: bool = False) -> str:
         """格式化单个任务行。待办任务可用有序数字列表。"""
         priority_mark = self._get_priority_mark(task.priority if task.priority else 0)
@@ -211,7 +185,7 @@ class CalendarExporter(BaseExporter):
         tasks = self._get_tasks_in_date_range(start_date, end_date)
         
         # 创建文件名
-        filename = f"Dida365:{date.strftime('%Y-%m-%d')}.md"
+        filename = f"{date.strftime('%Y-%m-%d')}-Dida365.md"
         filepath = os.path.join(self.daily_dir, filename)
         # 准备文件内容
         content = f"# {date.strftime('%Y-%m-%d')} 摘要\n\n"
@@ -290,7 +264,7 @@ class CalendarExporter(BaseExporter):
         start_date = datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0)
         end_date = start_date + timedelta(days=6, hours=23, minutes=59, seconds=59)
         tasks = self._get_tasks_in_date_range(start_date, end_date)
-        filename = f"Dida365:{start_date.strftime('%Y-W%W')}.md"
+        filename = f"{start_date.strftime('%Y-W%W')}-Dida365.md"
         filepath = os.path.join(self.weekly_dir, filename)
         content = f"# {start_date.strftime('%Y')} 第 {start_date.strftime('%W')} 周任务摘要\n\n"
         content += f"**周期**：{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}\n\n"
@@ -343,7 +317,7 @@ class CalendarExporter(BaseExporter):
         else:
             end_date = datetime(date.year, date.month + 1, 1) - timedelta(seconds=1)
         tasks = self._get_tasks_in_date_range(start_date, end_date)
-        filename = f"Dida365:{date.strftime('%Y-%m')}.md"
+        filename = f"{date.strftime('%Y-%m')}-Dida365.md"
         filepath = os.path.join(self.monthly_dir, filename)
         content = f"# {date.strftime('%Y-%m')} 月任务摘要\n\n"
         if tasks:

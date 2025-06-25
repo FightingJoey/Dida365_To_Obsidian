@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta
 from typing import Optional
+from Types import Task, Project
 
 class BaseExporter:
     """
@@ -44,6 +45,33 @@ class BaseExporter:
             return beijing_time.strftime(time_format)
         except (ValueError, AttributeError):
             return None
+
+    def _format_task_time_range(self, task: Task) -> str:
+        """
+        格式化任务的时间范围
+        返回格式：
+        - 只有开始时间：📅 从 YYYY-MM-DD 开始
+        - 只有结束时间：📅 至 YYYY-MM-DD
+        - 有开始和结束时间：📅 YYYY-MM-DD ~ YYYY-MM-DD
+        - 没有时间信息：空字符串
+        """
+        start_date = None
+        end_date = None
+        
+        if task.startDate:
+            start_date = self._format_time(task.startDate, "%Y-%m-%d")
+        if task.dueDate:
+            end_date = self._format_time(task.dueDate, "%Y-%m-%d")
+        
+        if start_date and end_date:
+            if start_date == end_date:
+                return f"📅 {start_date}"
+            return f"📅 {start_date} ~ {end_date}"
+        elif start_date:
+            return f"📅 从 {start_date} 开始"
+        elif end_date:
+            return f"📅 至 {end_date}"
+        return ""
 
     def _get_priority_mark(self, priority: int) -> str:
         """
