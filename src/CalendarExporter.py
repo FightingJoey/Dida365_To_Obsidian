@@ -270,10 +270,19 @@ class CalendarExporter(BaseExporter):
         content += f"**周期**：{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}\n\n"
         if tasks:
             days = [(start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
+            # 新增：生成带星期的日期列表
+            week_days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+            days_with_weekday = [
+                f"{week_days[i]}（{(start_date + timedelta(days=i)).strftime('%Y-%m-%d')}）" for i in range(7)
+            ]
             tasks_by_day = {d: {'todo': [], 'done': []} for d in days}
             for task in tasks:
                 task_date = None
-                if task.dueDate:
+                if task.status == 2 and getattr(task, 'completedTime', None):
+                    completed_time = getattr(task, 'completedTime', None)
+                    if completed_time:
+                        task_date = datetime.fromisoformat(completed_time.replace('Z', '+00:00'))
+                elif task.dueDate:
                     task_date = datetime.fromisoformat(task.dueDate.replace('Z', '+00:00'))
                 elif task.startDate:
                     task_date = datetime.fromisoformat(task.startDate.replace('Z', '+00:00'))
@@ -285,8 +294,9 @@ class CalendarExporter(BaseExporter):
                             tasks_by_day[date_str]['todo'].append(task)
                         elif task.status == 2:
                             tasks_by_day[date_str]['done'].append(task)
-            for day in days:
-                content += f"## {day}\n\n"
+            # 修改输出，日期加上星期
+            for i, day in enumerate(days):
+                content += f"## {days_with_weekday[i]}\n\n"
                 # 待办
                 if tasks_by_day[day]['todo']:
                     content += "### 待办任务\n\n"

@@ -200,7 +200,8 @@ class TaskExporter(BaseExporter):
             "priority": task.priority,
             "status": task.status,
             "created_time": self._format_time(task.createdTime),
-            "modified_time": self._format_time(task.modifiedTime)
+            "modified_time": self._format_time(task.modifiedTime),
+            "completedTime": self._format_time(task.completedTime)
         }
         
         # 构建文件内容
