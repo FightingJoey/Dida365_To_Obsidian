@@ -17,11 +17,15 @@ RUN apt-get update \
 # 复制代码
 COPY src/ /app/src/
 
+RUN chmod +x /app/src/login.sh
+RUN chmod +x /app/src/task.sh
+RUN chmod +x /app/src/calendar.sh
+
 # 创建输出目录（可被宿主机挂载）
 RUN mkdir -p /output
 
 # 拷贝示例 .env 文件
-# COPY env.example /app/.env
+COPY env.example /app/.env
 
 # 设置环境变量（可由 docker run -e 传入）
 ENV PYTHONUNBUFFERED=1 \
