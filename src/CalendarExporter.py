@@ -199,7 +199,7 @@ class CalendarExporter(BaseExporter):
     
     def export_weekly_summary(self, date: Optional[datetime] = None):
         """
-        导出每周任务摘要（以日期为节点，每天聚合所有任务，代办在前，已完成在后）
+        导出每周任务摘要（以日期为节点，每天聚合所有任务，输出为 Markdown 表格）
         """
         if date is None:
             date = datetime.now()
@@ -240,13 +240,17 @@ class CalendarExporter(BaseExporter):
                     dones = [t for t in day_tasks if t.status == 2]
                     todos_sorted = sorted(todos, key=lambda x: -(x.priority if x.priority else 0))
                     dones_sorted = sorted(dones, key=lambda x: -(x.priority if x.priority else 0))
-                    idx = 1
-                    for task in todos_sorted:
-                        content += self._format_task_line(task, idx, ordered=True) + "\n"
-                        idx += 1
-                    for task in dones_sorted:
-                        content += self._format_task_line(task, idx, ordered=True) + "\n"
-                        idx += 1
+                    all_tasks = todos_sorted + dones_sorted
+                    # 表头
+                    content += "| 序号 | 任务 | 优先级 | 时间范围 | 状态 | 完成时间 |\n"
+                    content += "| --- | --- | --- | --- | --- | --- |\n"
+                    for idx, task in enumerate(all_tasks, 1):
+                        title = f"[[{task.id}|{task.title}]]"
+                        priority = self._get_priority_mark(task.priority if task.priority else 0)
+                        time_range = self._format_task_time_range(task)
+                        status = "待办" if task.status == 0 else "已完成"
+                        done_time = self._format_time(task.completedTime, "%Y-%m-%d") if task.status == 2 else ""
+                        content += f"| {idx} | {title} | {priority} | {time_range} | {status} | {done_time} |\n"
                 else:
                     content += "无任务\n"
                 content += "\n"
@@ -258,7 +262,7 @@ class CalendarExporter(BaseExporter):
 
     def export_monthly_summary(self, date: Optional[datetime] = None):
         """
-        导出每月任务摘要（以周为节点，每周聚合所有任务，代办在前，已完成在后）
+        导出每月任务摘要（以周为节点，每周聚合所有任务，输出为 Markdown 表格）
         """
         if date is None:
             date = datetime.now()
@@ -294,13 +298,17 @@ class CalendarExporter(BaseExporter):
                     dones = [t for t in week_tasks if t.status == 2]
                     todos_sorted = sorted(todos, key=lambda x: -(x.priority if x.priority else 0))
                     dones_sorted = sorted(dones, key=lambda x: -(x.priority if x.priority else 0))
-                    idx = 1
-                    for task in todos_sorted:
-                        content += self._format_task_line(task, idx, ordered=True) + "\n"
-                        idx += 1
-                    for task in dones_sorted:
-                        content += self._format_task_line(task, idx, ordered=True) + "\n"
-                        idx += 1
+                    all_tasks = todos_sorted + dones_sorted
+                    # 表头
+                    content += "| 序号 | 任务 | 优先级 | 时间范围 | 状态 | 完成时间 |\n"
+                    content += "| --- | --- | --- | --- | --- | --- |\n"
+                    for idx, task in enumerate(all_tasks, 1):
+                        title = f"[[{task.id}|{task.title}]]"
+                        priority = self._get_priority_mark(task.priority if task.priority else 0)
+                        time_range = self._format_task_time_range(task)
+                        status = "待办" if task.status == 0 else "已完成"
+                        done_time = self._format_time(task.completedTime, "%Y-%m-%d") if task.status == 2 else ""
+                        content += f"| {idx} | {title} | {priority} | {time_range} | {status} | {done_time} |\n"
                 else:
                     content += "无任务\n"
                 content += "\n"

@@ -225,8 +225,8 @@ class TaskExporter(BaseExporter):
         # 添加子任务列表
         if task.childIds:
             content += "## 子任务列表\n\n"
-            content += "| ID | 任务标题 | 优先级 | 截止日期 |\n"
-            content += "| --- | --- | --- | --- |\n"
+            content += "| 任务标题 | 优先级 | 截止日期 |\n"
+            content += "| --- | --- | --- |\n"
             for childId in task.childIds:
                 child_task = task_dict.get(childId)
                 if child_task:
@@ -234,19 +234,19 @@ class TaskExporter(BaseExporter):
                     child_priority = child_task.priority
                     priority_mark = self._get_priority_mark(child_priority if child_priority else 0)
                     child_due_date = self._format_time(child_task.dueDate, "%Y-%m-%d")
-                    content += f"| [[{childId}]] | {child_title} | {priority_mark} | {child_due_date} |\n"
+                    content += f"| [[{childId}|{child_title}]] | {priority_mark} | {child_due_date} |\n"
         
         # 添加父任务
         if task.parentId:
             content += f"## 父任务\n\n"
-            content += "| ID | 任务标题 | 优先级 | 截止日期 |\n"
-            content += "| --- | --- | --- | --- |\n"
+            content += "| 任务标题 | 优先级 | 截止日期 |\n"
+            content += "| --- | --- | --- |\n"
             parent_task = task_dict.get(task.parentId)
             parent_title = parent_task.title if parent_task and getattr(parent_task, 'title', None) else None
             parent_priority = parent_task.priority if parent_task and getattr(parent_task, 'priority', None) else None
             priority_mark = self._get_priority_mark(parent_priority if parent_priority else 0)
             parent_due_date = self._format_time(parent_task.dueDate, "%Y-%m-%d") if parent_task and getattr(parent_task, 'dueDate', None) else None
-            content += f"| [[{task.parentId}]] | {parent_title} | {priority_mark} | {parent_due_date} |\n"
+            content += f"| [[{task.parentId}|{parent_title}]] | {priority_mark} | {parent_due_date} |\n"
         
         # 写入文件
         # 如果文件存在，先删除
