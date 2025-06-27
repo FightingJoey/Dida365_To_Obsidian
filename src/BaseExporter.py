@@ -23,6 +23,14 @@ class BaseExporter:
         else:
             self.output_dir = os.path.dirname(os.path.abspath(__file__))
     
+    def _formate_datetime(self, date: Optional[str]) -> Optional[datetime]:
+        if not date:
+            return None
+        dt = datetime.fromisoformat(date.replace('Z', '+00:00'))
+        # 转换为北京时间（UTC+8）
+        beijing_time = (dt + timedelta(hours=8)).replace(tzinfo=None)
+        return beijing_time
+
     def _format_time(self, time_str: Optional[str], time_format: str = "%Y-%m-%d %H:%M:%S") -> Optional[str]:
         """
         将时间字符串格式化为北京时间
@@ -39,10 +47,9 @@ class BaseExporter:
             
         try:
             # 处理 ISO 格式的时间字符串
-            dt = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
-            # 转换为北京时间（UTC+8）
-            beijing_time = dt + timedelta(hours=8)
-            return beijing_time.strftime(time_format)
+            beijing_time = self._formate_datetime(time_str)
+            if beijing_time:
+                return beijing_time.strftime(time_format)
         except (ValueError, AttributeError):
             return None
 

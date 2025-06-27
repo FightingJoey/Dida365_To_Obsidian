@@ -35,7 +35,19 @@ class CalendarExporter(BaseExporter):
         # 确保所有目录存在
         for dir_path in [self.calendar_dir, self.daily_dir, self.weekly_dir, self.monthly_dir]:
             self._ensure_dir(dir_path)
-    
+
+    def _get_tasks(self, sources, status: int, start_date: datetime, end_date: datetime) -> List[Task]:
+        tasks = []
+        for task_data in sources:
+            if task_data:
+                task = Task(task_data)
+                # 只处理已完成的任务
+                if task.status == status:
+                        should_include = self._task_in_range(task, start_date, end_date)
+                        if should_include:
+                            tasks.append(task)
+        return tasks
+
     def _get_tasks_in_date_range(self, start_date: datetime, end_date: datetime) -> List[Task]:
         """
         获取指定日期范围内的任务（包括待办和已完成）
@@ -46,107 +58,39 @@ class CalendarExporter(BaseExporter):
         3. 任务的时间跨度覆盖了该日期范围
         
         注意：没有任何时间信息（既没有开始时间也没有截止时间）的任务将被忽略
-        """
-        tasks = []
-        
+        """        
         # 获取所有未完成任务
         response = self.client.get_all_data()
-
+        todo_tasks = response.get("syncTaskBean", {}).get("update", [])
         # 处理未完成任务数据
-        for task_data in response.get("syncTaskBean", {}).get("update", []):
-            if task_data:
-                task = Task(task_data)
-                # 只处理未完成的任务
-                if task.status == 0:
-                    try:
-                        # 获取任务的开始时间和结束时间
-                        task_start = None
-                        task_end = None
-                        
-                        if task.startDate:
-                            task_start = datetime.fromisoformat(task.startDate.replace('Z', '+00:00'))
-                            task_start = (task_start + timedelta(hours=8)).replace(tzinfo=None)
-                        
-                        if task.dueDate:
-                            task_end = datetime.fromisoformat(task.dueDate.replace('Z', '+00:00'))
-                            task_end = (task_end + timedelta(hours=8)).replace(tzinfo=None)
-                        
-                        # 如果任务没有任何时间信息，跳过
-                        if not task_start and not task_end:
-                            continue
-                        
-                        # 判断任务是否应该包含在结果中
-                        should_include = False
-                        
-                        if task_start and task_end:
-                            # 任务有开始和结束时间
-                            # 任务的时间范围与目标范围有重叠
-                            should_include = not (task_end < start_date or task_start > end_date)
-                        elif task_start:
-                            # 只有开始时间的任务
-                            # 如果开始时间在范围内或之前，就包含
-                            should_include = task_start <= end_date
-                        elif task_end:
-                            # 只有结束时间的任务
-                            # 如果结束时间在范围内或之后，就包含
-                            should_include = task_end >= start_date
-                        
-                        if should_include:
-                            tasks.append(task)
-                            
-                    except ValueError:
-                        continue
+        todos = self._get_tasks(todo_tasks, 0, start_date, end_date)
         
         # 获取已完成任务
-        try:
-            completed_tasks = self.client.get_completed_tasks(
-                from_date=start_date.strftime("%Y-%m-%d %H:%M:%S"),
-                to_date=end_date.strftime("%Y-%m-%d %H:%M:%S")
-            )
-            
-            # 处理已完成任务
-            for task_data in completed_tasks:
-                if task_data:
-                    task = Task(task_data)
-                    # 只处理已完成的任务
-                    if task.status == 2:
-                        try:
-                            # 获取任务的开始时间和结束时间
-                            task_start = None
-                            task_end = None
-                            
-                            if task.startDate:
-                                task_start = datetime.fromisoformat(task.startDate.replace('Z', '+00:00'))
-                                task_start = (task_start + timedelta(hours=8)).replace(tzinfo=None)
-                            
-                            if task.dueDate:
-                                task_end = datetime.fromisoformat(task.dueDate.replace('Z', '+00:00'))
-                                task_end = (task_end + timedelta(hours=8)).replace(tzinfo=None)
-                            
-                            # 如果任务没有任何时间信息，跳过
-                            if not task_start and not task_end:
-                                continue
-                            
-                            # 判断任务是否应该包含在结果中
-                            should_include = False
-                            
-                            if task_start and task_end:
-                                should_include = not (task_end < start_date or task_start > end_date)
-                            elif task_start:
-                                should_include = task_start <= end_date
-                            elif task_end:
-                                should_include = task_end >= start_date
-                            
-                            if should_include:
-                                tasks.append(task)
-                                
-                        except ValueError:
-                            continue
-        except Exception as e:
-            print(f"获取已完成任务时出错: {e}")
+        completed_tasks = self.client.get_completed_tasks(
+            from_date=start_date.strftime("%Y-%m-%d %H:%M:%S"),
+            to_date=end_date.strftime("%Y-%m-%d %H:%M:%S")
+        )
+        # 处理已完成任务
+        completeds = self._get_tasks(completed_tasks, 2, start_date, end_date)
         
-        return tasks
+        return todos + completeds
     
+    def _task_in_range(self, task: Task, start: datetime, end: datetime) -> bool:
+        """判断任务是否在指定时间范围内（用于月摘要的周分组）"""
+        # 使用 _formate_datetime 获取任务的开始时间和结束时间
+        task_start = self._formate_datetime(task.startDate)
+        task_end = self._formate_datetime(task.dueDate)
+        
+        if not task_start and not task_end:
+            return False
+        if task_start and task_end:
+            return not (task_end < start or task_start > end)
+        elif task_start:
+            return task_start <= end
+        elif task_end:
+            return task_end >= start
+        return False
+
     def _format_task_line(self, task: Task, index: Optional[int] = None, ordered: bool = False) -> str:
         """格式化单个任务行。待办任务可用有序数字列表。"""
         priority_mark = self._get_priority_mark(task.priority if task.priority else 0)
@@ -255,7 +199,7 @@ class CalendarExporter(BaseExporter):
     
     def export_weekly_summary(self, date: Optional[datetime] = None):
         """
-        导出每周任务摘要（以日期为节点，每天下分待办和已完成）
+        导出每周任务摘要（以日期为节点，每天聚合所有任务，代办在前，已完成在后）
         """
         if date is None:
             date = datetime.now()
@@ -270,43 +214,41 @@ class CalendarExporter(BaseExporter):
         content += f"**周期**：{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}\n\n"
         if tasks:
             days = [(start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
-            # 新增：生成带星期的日期列表
             week_days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
             days_with_weekday = [
                 f"{week_days[i]}（{(start_date + timedelta(days=i)).strftime('%Y-%m-%d')}）" for i in range(7)
             ]
-            tasks_by_day = {d: {'todo': [], 'done': []} for d in days}
+            tasks_by_day = {d: [] for d in days}
             for task in tasks:
                 task_date = None
                 if task.status == 2 and getattr(task, 'completedTime', None):
-                    completed_time = getattr(task, 'completedTime', None)
-                    if completed_time:
-                        task_date = datetime.fromisoformat(completed_time.replace('Z', '+00:00'))
+                    task_date = self._formate_datetime(task.completedTime)
                 elif task.dueDate:
-                    task_date = datetime.fromisoformat(task.dueDate.replace('Z', '+00:00'))
+                    task_date = self._formate_datetime(task.dueDate)
                 elif task.startDate:
-                    task_date = datetime.fromisoformat(task.startDate.replace('Z', '+00:00'))
+                    task_date = self._formate_datetime(task.startDate)
                 if task_date:
-                    task_date = (task_date + timedelta(hours=8)).replace(tzinfo=None)
                     date_str = task_date.strftime('%Y-%m-%d')
                     if date_str in tasks_by_day:
-                        if task.status == 0:
-                            tasks_by_day[date_str]['todo'].append(task)
-                        elif task.status == 2:
-                            tasks_by_day[date_str]['done'].append(task)
-            # 修改输出，日期加上星期
+                        tasks_by_day[date_str].append(task)
             for i, day in enumerate(days):
                 content += f"## {days_with_weekday[i]}\n\n"
-                # 待办
-                if tasks_by_day[day]['todo']:
-                    content += "### 待办任务\n\n"
-                    for idx, task in enumerate(sorted(tasks_by_day[day]['todo'], key=lambda x: -(x.priority if x.priority else 0)), 1):
+                day_tasks = tasks_by_day[day]
+                if day_tasks:
+                    # 先输出代办，再输出已完成
+                    todos = [t for t in day_tasks if t.status == 0]
+                    dones = [t for t in day_tasks if t.status == 2]
+                    todos_sorted = sorted(todos, key=lambda x: -(x.priority if x.priority else 0))
+                    dones_sorted = sorted(dones, key=lambda x: -(x.priority if x.priority else 0))
+                    idx = 1
+                    for task in todos_sorted:
                         content += self._format_task_line(task, idx, ordered=True) + "\n"
-                # 已完成
-                if tasks_by_day[day]['done']:
-                    content += "\n### 已完成任务\n\n"
-                    for idx, task in enumerate(sorted(tasks_by_day[day]['done'], key=lambda x: -(x.priority if x.priority else 0)), 1):
+                        idx += 1
+                    for task in dones_sorted:
                         content += self._format_task_line(task, idx, ordered=True) + "\n"
+                        idx += 1
+                else:
+                    content += "无任务\n"
                 content += "\n"
         else:
             content += "本周没有任务。\n"
@@ -316,7 +258,7 @@ class CalendarExporter(BaseExporter):
 
     def export_monthly_summary(self, date: Optional[datetime] = None):
         """
-        导出每月任务摘要（以周为节点，每周下分待办和已完成）
+        导出每月任务摘要（以周为节点，每周聚合所有任务，代办在前，已完成在后）
         """
         if date is None:
             date = datetime.now()
@@ -347,18 +289,20 @@ class CalendarExporter(BaseExporter):
                 week_num = week_start.strftime('%W')
                 content += f"## 第 {week_num} 周 ({week_start.strftime('%Y-%m-%d')} ~ {week_end.strftime('%Y-%m-%d')})\n\n"
                 week_tasks = [t for t in tasks if self._task_in_range(t, week_start, week_end)]
-                todo_tasks = [t for t in week_tasks if t.status == 0]
-                done_tasks = [t for t in week_tasks if t.status == 2]
-                # 待办
-                if todo_tasks:
-                    content += "### 待办任务\n\n"
-                    for idx, task in enumerate(sorted(todo_tasks, key=lambda x: -(x.priority if x.priority else 0)), 1):
+                if week_tasks:
+                    todos = [t for t in week_tasks if t.status == 0]
+                    dones = [t for t in week_tasks if t.status == 2]
+                    todos_sorted = sorted(todos, key=lambda x: -(x.priority if x.priority else 0))
+                    dones_sorted = sorted(dones, key=lambda x: -(x.priority if x.priority else 0))
+                    idx = 1
+                    for task in todos_sorted:
                         content += self._format_task_line(task, idx, ordered=True) + "\n"
-                # 已完成
-                if done_tasks:
-                    content += "\n### 已完成任务\n\n"
-                    for idx, task in enumerate(sorted(done_tasks, key=lambda x: -(x.priority if x.priority else 0)), 1):
+                        idx += 1
+                    for task in dones_sorted:
                         content += self._format_task_line(task, idx, ordered=True) + "\n"
+                        idx += 1
+                else:
+                    content += "无任务\n"
                 content += "\n"
         else:
             content += "本月没有任务。\n"
@@ -366,25 +310,6 @@ class CalendarExporter(BaseExporter):
             f.write(content)
         print(f"已创建每月摘要：{filename}")
 
-    def _task_in_range(self, task: Task, start: datetime, end: datetime) -> bool:
-        """判断任务是否在指定时间范围内（用于月摘要的周分组）"""
-        task_start = None
-        task_end = None
-        if task.startDate:
-            task_start = datetime.fromisoformat(task.startDate.replace('Z', '+00:00'))
-            task_start = (task_start + timedelta(hours=8)).replace(tzinfo=None)
-        if task.dueDate:
-            task_end = datetime.fromisoformat(task.dueDate.replace('Z', '+00:00'))
-            task_end = (task_end + timedelta(hours=8)).replace(tzinfo=None)
-        if not task_start and not task_end:
-            return False
-        if task_start and task_end:
-            return not (task_end < start or task_start > end)
-        elif task_start:
-            return task_start <= end
-        elif task_end:
-            return task_end >= start
-        return False
 
 # 使用示例
 if __name__ == "__main__":
@@ -397,9 +322,9 @@ if __name__ == "__main__":
         
         # 导出当前的日、周、月摘要
         today = datetime.now()
-        exporter.export_daily_summary(today)
+        # exporter.export_daily_summary(today)
         exporter.export_weekly_summary(today)
-        exporter.export_monthly_summary(today)
+        # exporter.export_monthly_summary(today)
         
     except ValueError as e:
         print(f"环境变量配置错误: {e}")
