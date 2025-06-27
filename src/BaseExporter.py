@@ -73,6 +73,11 @@ class BaseExporter:
         if start_date and end_date:
             if start_date == end_date:
                 return f"📅 {start_date}"
+            if task.isAllDay:
+                dt = self._formate_datetime(task.dueDate)
+                if dt:
+                    dt = dt - timedelta(days=1)
+                    end_date = dt.strftime("%Y-%m-%d")
             return f"📅 {start_date} ~ {end_date}"
         elif start_date:
             return f"📅 从 {start_date} 开始"

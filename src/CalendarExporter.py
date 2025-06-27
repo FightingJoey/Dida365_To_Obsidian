@@ -322,9 +322,9 @@ if __name__ == "__main__":
         
         # 导出当前的日、周、月摘要
         today = datetime.now()
-        # exporter.export_daily_summary(today)
+        exporter.export_daily_summary(today)
         exporter.export_weekly_summary(today)
-        # exporter.export_monthly_summary(today)
+        exporter.export_monthly_summary(today)
         
     except ValueError as e:
         print(f"环境变量配置错误: {e}")
