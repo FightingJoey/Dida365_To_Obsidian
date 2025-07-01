@@ -234,7 +234,7 @@ class TaskExporter(BaseExporter):
                     child_priority = child_task.priority
                     priority_mark = self._get_priority_mark(child_priority if child_priority else 0)
                     child_due_date = self._format_time(child_task.dueDate, "%Y-%m-%d")
-                    content += f"| [[{childId}|{child_title}]] | {priority_mark} | {child_due_date} |\n"
+                    content += f"| [[{childId}\|{child_title}]] | {priority_mark} | {child_due_date} |\n"
         
         # 添加父任务
         if task.parentId:
@@ -246,7 +246,7 @@ class TaskExporter(BaseExporter):
             parent_priority = parent_task.priority if parent_task and getattr(parent_task, 'priority', None) else None
             priority_mark = self._get_priority_mark(parent_priority if parent_priority else 0)
             parent_due_date = self._format_time(parent_task.dueDate, "%Y-%m-%d") if parent_task and getattr(parent_task, 'dueDate', None) else None
-            content += f"| [[{task.parentId}|{parent_title}]] | {priority_mark} | {parent_due_date} |\n"
+            content += f"| [[{task.parentId}\|{parent_title}]] | {priority_mark} | {parent_due_date} |\n"
         
         # 写入文件
         # 如果文件存在，先删除

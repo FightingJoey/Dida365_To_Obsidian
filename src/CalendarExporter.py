@@ -245,7 +245,7 @@ class CalendarExporter(BaseExporter):
                     content += "| 序号 | 任务 | 优先级 | 时间范围 | 状态 | 完成时间 |\n"
                     content += "| --- | --- | --- | --- | --- | --- |\n"
                     for idx, task in enumerate(all_tasks, 1):
-                        title = f"[[{task.id}|{task.title}]]"
+                        title = f"[[{task.id}\|{task.title}]]"
                         priority = self._get_priority_mark(task.priority if task.priority else 0)
                         time_range = self._format_task_time_range(task)
                         status = "待办" if task.status == 0 else "已完成"
@@ -303,7 +303,7 @@ class CalendarExporter(BaseExporter):
                     content += "| 序号 | 任务 | 优先级 | 时间范围 | 状态 | 完成时间 |\n"
                     content += "| --- | --- | --- | --- | --- | --- |\n"
                     for idx, task in enumerate(all_tasks, 1):
-                        title = f"[[{task.id}|{task.title}]]"
+                        title = f"[[{task.id}\|{task.title}]]"
                         priority = self._get_priority_mark(task.priority if task.priority else 0)
                         time_range = self._format_task_time_range(task)
                         status = "待办" if task.status == 0 else "已完成"
