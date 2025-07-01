@@ -50,4 +50,8 @@ CMD ["cron", "-f"]
 # 4. 也可进入容器手动执行：
 #    docker exec -it <container_id> python /app/src/TaskExporter.py
 #    docker exec -it <container_id> python /app/src/CalendarExporter.py
+# 5. 构建本地镜像
+#    docker build -t dida365-obsidian:latest .
+# 6. 创建容器
+#    docker-compose up -d
 # ===================== 
