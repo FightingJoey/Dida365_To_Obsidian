@@ -108,6 +108,21 @@ class CalendarExporter(BaseExporter):
             line += f" | ✅ {done_date}"
         return line
     
+    def get_summary_front_matter(self) -> str:
+        """获取摘要的 Front Matter"""
+        # 准备 Front Matter
+        front_matter = {
+            "updated_time": self._format_time(datetime.now().isoformat())
+        }
+        
+        # 构建文件内容
+        content = "---\n"
+        for key, value in front_matter.items():
+            if value is not None:
+                content += f"{key}: {value}\n"
+        content += "---\n\n"
+        return content
+    
     def export_daily_summary(self, date: Optional[datetime] = None):
         """
         导出每日任务摘要
@@ -132,7 +147,8 @@ class CalendarExporter(BaseExporter):
         filename = f"{date.strftime('%Y-%m-%d')}-Dida365.md"
         filepath = os.path.join(self.daily_dir, filename)
         # 准备文件内容
-        content = f"# {date.strftime('%Y-%m-%d')} 摘要\n\n"
+        content = self.get_summary_front_matter()
+        content += f"# {date.strftime('%Y-%m-%d')} 摘要\n\n"
 
         # 获取习惯数据
         habits_data = self.client.get_habits()
@@ -210,7 +226,8 @@ class CalendarExporter(BaseExporter):
         tasks = self._get_tasks_in_date_range(start_date, end_date)
         filename = f"{start_date.strftime('%Y-W%W')}-Dida365.md"
         filepath = os.path.join(self.weekly_dir, filename)
-        content = f"# {start_date.strftime('%Y')} 第 {start_date.strftime('%W')} 周任务摘要\n\n"
+        content = self.get_summary_front_matter()
+        content += f"# {start_date.strftime('%Y')} 第 {start_date.strftime('%W')} 周任务摘要\n\n"
         content += f"**周期**：{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}\n\n"
         if tasks:
             days = [(start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
@@ -275,7 +292,8 @@ class CalendarExporter(BaseExporter):
         tasks = self._get_tasks_in_date_range(start_date, end_date)
         filename = f"{date.strftime('%Y-%m')}-Dida365.md"
         filepath = os.path.join(self.monthly_dir, filename)
-        content = f"# {date.strftime('%Y-%m')} 月任务摘要\n\n"
+        content = self.get_summary_front_matter()
+        content += f"# {date.strftime('%Y-%m')} 月任务摘要\n\n"
         if tasks:
             first_day = start_date
             last_day = end_date

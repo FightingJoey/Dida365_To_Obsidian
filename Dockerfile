@@ -17,9 +17,7 @@ RUN apt-get update \
 # 复制代码
 COPY src/ /app/src/
 
-RUN chmod +x /app/src/login.sh
-RUN chmod +x /app/src/task.sh
-RUN chmod +x /app/src/calendar.sh
+RUN find /app/src -name "*.sh" -exec chmod +x {} \;
 
 # 创建输出目录（可被宿主机挂载）
 RUN mkdir -p /output

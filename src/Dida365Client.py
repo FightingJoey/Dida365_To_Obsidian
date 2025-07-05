@@ -40,7 +40,6 @@ class Dida365Client:
         # 优先尝试从 .env 读取 token
         self._load_token_from_env()
         if not self.token:
-            print("登录获取Token")
             self.login()
         else:
             print("使用本地保存的Token")
@@ -66,6 +65,7 @@ class Dida365Client:
 
     def login(self):
         """登录获取token"""
+        print("登录获取Token")
         url = f"{self.base_url}/user/signon?wc=true&remember=true"
         payload = {
             "password": self.password,

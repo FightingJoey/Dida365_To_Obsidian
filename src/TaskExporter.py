@@ -79,7 +79,18 @@ class TaskExporter(BaseExporter):
         
         # 统一索引模式
         if self.unified_index:
-            all_content = ""
+            # 准备 Front Matter
+            front_matter = {
+                "updated_time": self._format_time(datetime.now().isoformat())
+            }
+            
+            # 构建文件内容
+            all_content = "---\n"
+            for key, value in front_matter.items():
+                if value is not None:
+                    all_content += f"{key}: {value}\n"
+            all_content += "---\n\n"
+            
             for project in projects:
                 # 获取该项目下的未完成任务
                 project_tasks = [task for task in unfinished_tasks if task.projectId == project.id]
@@ -263,7 +274,7 @@ class TaskExporter(BaseExporter):
         """
         返回某个项目的索引内容（不写入文件，仅返回字符串）
         """
-        content = f"# {project.name}\n\n"
+        content = f"## {project.name}\n\n"
         if tasks:
             sorted_tasks = sorted(tasks, key=lambda x: (-x.priority if x.priority else 0, x.createdTime if x.createdTime else ""))
             for task in sorted_tasks:

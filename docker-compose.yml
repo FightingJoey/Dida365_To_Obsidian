@@ -7,9 +7,9 @@ services:
     # 挂载主机 output 目录到容器 /output，实现数据持久化
     volumes:
       - /Users/joy/Documents/SecondBrain:/output
-      - ./src:/app/src
+    # - ./src:/app/src # 如果需要实时修改代码，可以挂载主机 src 目录到容器 /app/src
     # 可选：挂载自定义 crontab 文件
-    # - ./my_crontab:/etc/cron.d/dida_cron
+    - ./docker_crontab:/etc/cron.d/dida_cron
     # 环境变量配置（推荐用 .env 文件，或直接写在这里）
     env_file:
       - .env.production
