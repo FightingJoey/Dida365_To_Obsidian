@@ -2,8 +2,8 @@
 
 0 8 * * * /app/src/login.sh >> /output/cron.log 2>&1
 
-# 每隔 30 分钟执行一次任务导出
-*/30 * * * * /app/src/task.sh >> /output/cron.log 2>&1
+# 每隔 5 分钟执行一次任务导出
+*/5 * * * * /app/src/task.sh >> /output/cron.log 2>&1
 
 # 每隔 1 小时执行一次日历摘要导出
 0 * * * * /app/src/calendar.sh >> /output/cron.log 2>&1

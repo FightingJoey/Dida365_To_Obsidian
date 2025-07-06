@@ -224,10 +224,12 @@ class CalendarExporter(BaseExporter):
         start_date = datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0)
         end_date = start_date + timedelta(days=6, hours=23, minutes=59, seconds=59)
         tasks = self._get_tasks_in_date_range(start_date, end_date)
-        filename = f"{start_date.strftime('%Y-W%W')}-Dida365.md"
+        # 修正周数计算：使用 isocalendar()
+        iso_year, week_num, _ = date.isocalendar()  # 返回 (ISO年份, 周数, 周几)
+        filename = f"{iso_year}-W{week_num:02d}-Dida365.md"  # 格式化为两位数周数
         filepath = os.path.join(self.weekly_dir, filename)
         content = self.get_summary_front_matter()
-        content += f"# {start_date.strftime('%Y')} 第 {start_date.strftime('%W')} 周任务摘要\n\n"
+        content += f"# {iso_year} 第 {week_num:02d} 周任务摘要\n\n"
         content += f"**周期**：{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}\n\n"
         if tasks:
             days = [(start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
