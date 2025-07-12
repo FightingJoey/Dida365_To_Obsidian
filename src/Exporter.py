@@ -48,23 +48,6 @@ class Exporter:
         # 确保所有目录存在
         for dir_path in [self.calendar_dir, self.daily_dir, self.weekly_dir, self.monthly_dir, self.tasks_dir, self.tasks_inbox_dir]:
             self._ensure_dir(dir_path)
-    
-    def _formate_datetime(self, date: Optional[str]) -> Optional[datetime]:
-        """
-        将 ISO 格式的时间字符串转换为北京时间的 datetime 对象
-        
-        参数:
-            date: ISO 格式的时间字符串，例如 '2023-01-01T12:00:00Z'
-            
-        返回:
-            转换后的 datetime 对象，如果输入为空则返回 None
-        """
-        if not date:
-            return None
-        dt = datetime.fromisoformat(date.replace('Z', '+00:00'))
-        # 转换为北京时间（UTC+8）
-        beijing_time = (dt + timedelta(hours=8)).replace(tzinfo=None)
-        return beijing_time
 
     def _format_time(self, time_str: Optional[str], time_format: str = "%Y-%m-%d %H:%M:%S") -> Optional[str]:
         """
@@ -82,7 +65,7 @@ class Exporter:
             
         try:
             # 处理 ISO 格式的时间字符串
-            beijing_time = self._formate_datetime(time_str)
+            beijing_time = formate_datetime(time_str)
             if beijing_time:
                 return beijing_time.strftime(time_format)
         except (ValueError, AttributeError):
@@ -100,7 +83,7 @@ class Exporter:
         - 没有时间信息：空字符串
         
         参数:
-            task: Task 对象，包含 startDate 和 dueDate 属性
+            task: Task 对象，包含 startDate 和 dueDate 属性（可能是 datetime 对象或字符串）
             
         返回:
             格式化后的时间范围字符串
@@ -108,19 +91,27 @@ class Exporter:
         start_date = None
         end_date = None
         
-        if task.startDate:
-            start_date = self._format_time(task.startDate, "%Y-%m-%d")
-        if task.dueDate:
-            end_date = self._format_time(task.dueDate, "%Y-%m-%d")
+        # 优先使用处理后的时间，如果没有则使用原始时间
+        start_time = getattr(task, '_processed_startDate', None) or task.startDate
+        end_time = getattr(task, '_processed_dueDate', None) or task.dueDate
+        
+        # 处理 startDate（可能是 datetime 对象或字符串）
+        if start_time:
+            if isinstance(start_time, datetime):
+                start_date = start_time.strftime("%Y-%m-%d")
+            else:
+                start_date = self._format_time(start_time, "%Y-%m-%d")
+        
+        # 处理 dueDate（可能是 datetime 对象或字符串）
+        if end_time:
+            if isinstance(end_time, datetime):
+                end_date = end_time.strftime("%Y-%m-%d")
+            else:
+                end_date = self._format_time(end_time, "%Y-%m-%d")
         
         if start_date and end_date:
             if start_date == end_date:
                 return f"📅 {start_date}"
-            if task.isAllDay:
-                dt = self._formate_datetime(task.dueDate)
-                if dt:
-                    dt = dt - timedelta(days=1)
-                    end_date = dt.strftime("%Y-%m-%d")
             return f"📅 {start_date} ~ {end_date}"
         elif start_date:
             return f"📅 从 {start_date} 开始"
@@ -200,8 +191,8 @@ class Exporter:
             "title": task.title,
             "task_id": task.id,
             "project_id": task.projectId,
-            "start_date": self._format_time(task.startDate),
-            "due_date": self._format_time(task.dueDate),
+            "start_date": self._format_time_from_task(getattr(task, '_processed_startDate', None) or task.startDate),
+            "due_date": self._format_time_from_task(getattr(task, '_processed_dueDate', None) or task.dueDate),
             "priority": task.priority,
             "status": task.status,
             "created_time": self._format_time(task.createdTime),
@@ -238,7 +229,7 @@ class Exporter:
                     child_title = child_task.title
                     child_priority = child_task.priority
                     priority_mark = self._get_priority_mark(child_priority if child_priority else 0)
-                    child_due_date = self._format_time(child_task.dueDate, "%Y-%m-%d")
+                    child_due_date = self._format_time_from_task(getattr(child_task, '_processed_dueDate', None) or child_task.dueDate)
                     content += f"| [[{childId}\|{child_title}]] | {priority_mark} | {child_due_date} |\n"
         
         # 添加父任务
@@ -250,7 +241,7 @@ class Exporter:
             parent_title = parent_task.title if parent_task and getattr(parent_task, 'title', None) else None
             parent_priority = parent_task.priority if parent_task and getattr(parent_task, 'priority', None) else None
             priority_mark = self._get_priority_mark(parent_priority if parent_priority else 0)
-            parent_due_date = self._format_time(parent_task.dueDate, "%Y-%m-%d") if parent_task and getattr(parent_task, 'dueDate', None) else None
+            parent_due_date = self._format_time_from_task(getattr(parent_task, '_processed_dueDate', None) or parent_task.dueDate) if parent_task and getattr(parent_task, 'dueDate', None) else None
             content += f"| [[{task.parentId}\|{parent_title}]] | {priority_mark} | {parent_due_date} |\n"
         
         # 写入文件
@@ -329,18 +320,34 @@ class Exporter:
         返回:
             如果任务在指定时间范围内，则返回 True，否则返回 False
         """
-        # 使用 _formate_datetime 获取任务的开始时间和结束时间
-        task_start = self._formate_datetime(task.startDate)
-        task_end = self._formate_datetime(task.dueDate)
+        # 优先使用处理后的时间，如果没有则使用原始时间
+        task_start = getattr(task, '_processed_startDate', None) or task.startDate
+        task_end = getattr(task, '_processed_dueDate', None) or task.dueDate
         
-        if not task_start and not task_end:
+        # 获取任务的开始时间和结束时间（可能是 datetime 对象或字符串）
+        start_dt = None
+        end_dt = None
+        
+        if task_start:
+            if isinstance(task_start, datetime):
+                start_dt = task_start
+            else:
+                start_dt = formate_datetime(task_start)
+        
+        if task_end:
+            if isinstance(task_end, datetime):
+                end_dt = task_end
+            else:
+                end_dt = formate_datetime(task_end)
+        
+        if not start_dt and not end_dt:
             return False
-        if task_start and task_end:
-            return not (task_end < start or task_start > end)
-        elif task_start:
-            return task_start <= end
-        elif task_end:
-            return task_end >= start
+        if start_dt and end_dt:
+            return not (end_dt < start or start_dt > end)
+        elif start_dt:
+            return start_dt <= end
+        elif end_dt:
+            return end_dt >= start
         return False
 
     def _get_tasks_in_date_range(self, start_date: datetime, end_date: datetime) -> List[Task]:
@@ -415,6 +422,24 @@ class Exporter:
                 content += f"{key}: {value}\n"
         content += "---\n\n"
         return content
+
+    def _format_time_from_task(self, time_value) -> Optional[str]:
+        """
+        从任务的时间字段格式化时间字符串
+        
+        参数:
+            time_value: 可能是 datetime 对象或字符串的时间值
+            
+        返回:
+            格式化后的时间字符串
+        """
+        if not time_value:
+            return None
+        
+        if isinstance(time_value, datetime):
+            return time_value.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            return self._format_time(time_value)
 
     # MARK: - 公开方法
 
@@ -577,11 +602,13 @@ class Exporter:
             for task in tasks:
                 task_date = None
                 if task.status == 2 and getattr(task, 'completedTime', None):
-                    task_date = self._formate_datetime(task.completedTime)
-                elif task.dueDate:
-                    task_date = self._formate_datetime(task.dueDate)
-                elif task.startDate:
-                    task_date = self._formate_datetime(task.startDate)
+                    task_date = formate_datetime(task.completedTime)
+                elif getattr(task, '_processed_dueDate', None) or task.dueDate:
+                    # 优先使用处理后的时间
+                    task_date = getattr(task, '_processed_dueDate', None) or formate_datetime(task.dueDate)
+                elif getattr(task, '_processed_startDate', None) or task.startDate:
+                    # 优先使用处理后的时间
+                    task_date = getattr(task, '_processed_startDate', None) or formate_datetime(task.startDate)
                 if task_date:
                     date_str = task_date.strftime('%Y-%m-%d')
                     if date_str in tasks_by_day:
@@ -684,6 +711,23 @@ class Exporter:
             f.write(content)
         print(f"已创建每月摘要：{filename}")
 
+def formate_datetime(date: Optional[str]) -> Optional[datetime]:
+        """
+        将 ISO 格式的时间字符串转换为北京时间的 datetime 对象
+        
+        参数:
+            date: ISO 格式的时间字符串，例如 '2023-01-01T12:00:00Z'
+            
+        返回:
+            转换后的 datetime 对象，如果输入为空则返回 None
+        """
+        if not date:
+            return None
+        dt = datetime.fromisoformat(date.replace('Z', '+00:00'))
+        # 转换为北京时间（UTC+8）
+        beijing_time = (dt + timedelta(hours=8)).replace(tzinfo=None)
+        return beijing_time
+
 def get_tasks(client, date):
     """
     获取滴答清单中的项目和任务数据
@@ -692,6 +736,7 @@ def get_tasks(client, date):
     1. 获取所有项目数据
     2. 获取所有未完成任务
     3. 获取当月已完成的任务
+    4. 对任务的时间字段进行预处理和格式化
     
     参数:
         client: Dida365Client 实例，用于与滴答清单 API 交互
@@ -717,11 +762,14 @@ def get_tasks(client, date):
     for i in response.get("projectProfiles", []):
         if i != []:
             projects.append(Project(i))
+    
     # 处理代办任务数据
     for i in response.get("syncTaskBean", {}).get("update", []):
         if i != []:
             task = Task(i)
             if task.status == 0:
+                # 预处理时间字段
+                preprocess_task_dates(task)
                 todo_tasks.append(task)
 
     # 计算当月的开始和结束日期
@@ -740,9 +788,39 @@ def get_tasks(client, date):
         if task_data:
             task = Task(task_data)
             if task.status == 2:
+                # 预处理时间字段
+                preprocess_task_dates(task)
                 completed_tasks.append(task)
 
     return projects, todo_tasks, completed_tasks
+
+def preprocess_task_dates(task: Task):
+    """
+    预处理任务的时间字段
+    
+    对任务的 startDate 和 dueDate 进行格式化处理：
+    1. 使用 formate_datetime 将 ISO 字符串转换为 datetime 对象
+    2. 对于 isAllDay 为 true 的任务，dueDate 需要减一天
+    3. 将处理后的 datetime 对象存储为临时属性
+    
+    参数:
+        task: Task 对象，需要预处理时间字段的任务
+    """
+    
+    # 处理 startDate
+    if task.startDate:
+        processed_start = formate_datetime(task.startDate)
+        # 使用 setattr 动态添加属性
+        setattr(task, '_processed_startDate', processed_start)
+    
+    # 处理 dueDate
+    if task.dueDate:
+        dt = formate_datetime(task.dueDate)
+        # 如果是全天任务，dueDate 需要减一天
+        if getattr(task, 'isAllDay', False) and dt:
+            dt = dt - timedelta(days=1)
+        # 使用 setattr 动态添加属性
+        setattr(task, '_processed_dueDate', dt)
 
 def get_habits(client, date):
     """
