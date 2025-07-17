@@ -221,28 +221,19 @@ class Exporter:
         # 添加子任务列表
         if task.childIds:
             content += "## 子任务列表\n\n"
-            content += "| 任务标题 | 优先级 | 截止日期 |\n"
-            content += "| --- | --- | --- |\n"
+            content += self._create_table_header()
             for childId in task.childIds:
                 child_task = task_dict.get(childId)
                 if child_task:
-                    child_title = child_task.title
-                    child_priority = child_task.priority
-                    priority_mark = self._get_priority_mark(child_priority if child_priority else 0)
-                    child_due_date = self._format_time_from_task(getattr(child_task, '_processed_dueDate', None) or child_task.dueDate)
-                    content += f"| [[{childId}\|{child_title}]] | {priority_mark} | {child_due_date} |\n"
+                    content += self._create_task_table_content(child_task)
         
         # 添加父任务
         if task.parentId:
             content += f"## 父任务\n\n"
-            content += "| 任务标题 | 优先级 | 截止日期 |\n"
-            content += "| --- | --- | --- |\n"
+            content += self._create_table_header()
             parent_task = task_dict.get(task.parentId)
-            parent_title = parent_task.title if parent_task and getattr(parent_task, 'title', None) else None
-            parent_priority = parent_task.priority if parent_task and getattr(parent_task, 'priority', None) else None
-            priority_mark = self._get_priority_mark(parent_priority if parent_priority else 0)
-            parent_due_date = self._format_time_from_task(getattr(parent_task, '_processed_dueDate', None) or parent_task.dueDate) if parent_task and getattr(parent_task, 'dueDate', None) else None
-            content += f"| [[{task.parentId}\|{parent_title}]] | {priority_mark} | {parent_due_date} |\n"
+            if parent_task:
+                content += self._create_task_table_content(parent_task)
         
         # 写入文件
         # 如果文件存在，先删除
@@ -441,6 +432,33 @@ class Exporter:
         else:
             return self._format_time(time_value)
 
+    def _create_table_header(self):
+        content = "| 任务 | 优先级 | 时间范围 | 状态 | 完成时间 |\n"
+        content += "| --- | --- | --- | --- | --- |\n"
+        return content
+
+    def _create_task_table_content(self, task: Task):
+        content = ""
+        title = f"[[{task.id}\|{task.title}]]"
+        priority = self._get_priority_mark(task.priority if task.priority else 0)
+        time_range = self._format_task_time_range(task)
+        status = "待办" if task.status == 0 else "已完成"
+        done_time = self._format_time(task.completedTime, "%Y-%m-%d") if task.status == 2 else ""
+        content += f"| {title} | {priority} | {time_range} | {status} | {done_time} |\n"
+        return content
+
+    def _create_sub_task_table(self, tasks: list[Task]):
+        content = ""
+        todos = [t for t in tasks if t.status == 0]
+        dones = [t for t in tasks if t.status == 2]
+        todos_sorted = sorted(todos, key=lambda x: -(x.priority if x.priority else 0))
+        dones_sorted = sorted(dones, key=lambda x: -(x.priority if x.priority else 0))
+        all_tasks = todos_sorted + dones_sorted
+        # 表头
+        content += self._create_table_header()
+        for task in all_tasks:
+            content += self._create_task_table_content(task)
+        return content
     # MARK: - 公开方法
 
     def export_project_tasks(self):
@@ -617,22 +635,8 @@ class Exporter:
                 content += f"## {days_with_weekday[i]}\n\n"
                 day_tasks = tasks_by_day[day]
                 if day_tasks:
-                    # 先输出代办，再输出已完成
-                    todos = [t for t in day_tasks if t.status == 0]
-                    dones = [t for t in day_tasks if t.status == 2]
-                    todos_sorted = sorted(todos, key=lambda x: -(x.priority if x.priority else 0))
-                    dones_sorted = sorted(dones, key=lambda x: -(x.priority if x.priority else 0))
-                    all_tasks = todos_sorted + dones_sorted
-                    # 表头
-                    content += "| 序号 | 任务 | 优先级 | 时间范围 | 状态 | 完成时间 |\n"
-                    content += "| --- | --- | --- | --- | --- | --- |\n"
-                    for idx, task in enumerate(all_tasks, 1):
-                        title = f"[[{task.id}\|{task.title}]]"
-                        priority = self._get_priority_mark(task.priority if task.priority else 0)
-                        time_range = self._format_task_time_range(task)
-                        status = "待办" if task.status == 0 else "已完成"
-                        done_time = self._format_time(task.completedTime, "%Y-%m-%d") if task.status == 2 else ""
-                        content += f"| {idx} | {title} | {priority} | {time_range} | {status} | {done_time} |\n"
+                    # 先输出待办，再输出已完成
+                    content += self._create_sub_task_table(day_tasks)
                 else:
                     content += "无任务\n"
                 content += "\n"
@@ -687,21 +691,7 @@ class Exporter:
                 content += f"## 第 {week_num} 周 ({week_start.strftime('%Y-%m-%d')} ~ {week_end.strftime('%Y-%m-%d')})\n\n"
                 week_tasks = [t for t in tasks if self._task_in_range(t, week_start, week_end)]
                 if week_tasks:
-                    todos = [t for t in week_tasks if t.status == 0]
-                    dones = [t for t in week_tasks if t.status == 2]
-                    todos_sorted = sorted(todos, key=lambda x: -(x.priority if x.priority else 0))
-                    dones_sorted = sorted(dones, key=lambda x: -(x.priority if x.priority else 0))
-                    all_tasks = todos_sorted + dones_sorted
-                    # 表头
-                    content += "| 序号 | 任务 | 优先级 | 时间范围 | 状态 | 完成时间 |\n"
-                    content += "| --- | --- | --- | --- | --- | --- |\n"
-                    for idx, task in enumerate(all_tasks, 1):
-                        title = f"[[{task.id}\|{task.title}]]"
-                        priority = self._get_priority_mark(task.priority if task.priority else 0)
-                        time_range = self._format_task_time_range(task)
-                        status = "待办" if task.status == 0 else "已完成"
-                        done_time = self._format_time(task.completedTime, "%Y-%m-%d") if task.status == 2 else ""
-                        content += f"| {idx} | {title} | {priority} | {time_range} | {status} | {done_time} |\n"
+                    content += self._create_sub_task_table(week_tasks)
                 else:
                     content += "无任务\n"
                 content += "\n"
@@ -763,7 +753,7 @@ def get_tasks(client, date):
         if i != []:
             projects.append(Project(i))
     
-    # 处理代办任务数据
+    # 处理待办任务数据
     for i in response.get("syncTaskBean", {}).get("update", []):
         if i != []:
             task = Task(i)
