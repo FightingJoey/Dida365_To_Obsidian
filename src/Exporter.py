@@ -807,7 +807,7 @@ def preprocess_task_dates(task: Task):
     if task.dueDate:
         dt = formate_datetime(task.dueDate)
         # 如果是全天任务，dueDate 需要减一天
-        if getattr(task, 'isAllDay', False) and dt:
+        if getattr(task, 'isAllDay', False) and task.startDate != task.dueDate and dt:
             dt = dt - timedelta(days=1)
         # 使用 setattr 动态添加属性
         setattr(task, '_processed_dueDate', dt)
