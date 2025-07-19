@@ -59,7 +59,8 @@ def export_weekly_memos_summary(memos, output_dir):
         content += f"## {days_with_weekday[i]}\n\n"
         day_memos = memos_by_day[day]
         if day_memos:
-            for memo in day_memos:
+            day_memos_sorted = sorted(day_memos, key=lambda m: m.createdTs or 0)
+            for memo in day_memos_sorted:
                 dt = datetime.fromtimestamp(memo.createdTs)
                 time_str = dt.strftime('%H:%M')
                 memo_lines = (memo.content or '').strip().split('\n')
@@ -76,6 +77,45 @@ def export_weekly_memos_summary(memos, output_dir):
         f.write(content)
     print(f"已创建每周 Memos 摘要：{filename}")
 
+def export_daily_memos(memos, daily_dir):
+    """
+    导出每日 Memos，每天一个 Markdown 文件
+    """
+    if not memos:
+        print("没有 Memos 数据")
+        return
+    # 按天聚合
+    memos_by_day = {}
+    for memo in memos:
+        if not memo.createdTs:
+            continue
+        dt = datetime.fromtimestamp(memo.createdTs)
+        date_str = dt.strftime('%Y-%m-%d')
+        if date_str not in memos_by_day:
+            memos_by_day[date_str] = []
+        memos_by_day[date_str].append(memo)
+    for date_str, day_memos in memos_by_day.items():
+        if day_memos:
+            # 按 createdTs 正序排序
+            day_memos_sorted = sorted(day_memos, key=lambda m: m.createdTs or 0)
+            filename = f"{date_str}-Memos.md"
+            filepath = os.path.join(daily_dir, filename)
+            content = ""
+            for memo in day_memos_sorted:
+                dt = datetime.fromtimestamp(memo.createdTs)
+                time_str = dt.strftime('%H:%M')
+                memo_lines = (memo.content or '').strip().split('\n')
+                target_first_line = f"- {time_str} "
+                if len(memo_lines) > 1:
+                    target_other_line = '\n' + '\n'.join([f"\t{line}" for line in memo_lines])
+                else:
+                    target_other_line = memo_lines[0] if memo_lines else ''
+                content += f"{target_first_line}{target_other_line}\n"
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(content)
+            print(f"已创建每日 Memos：{filename}")
+        
+
 def main():
     if os.getenv('OUTPUT_DIR'):
         output_dir = os.getenv('OUTPUT_DIR')
@@ -87,10 +127,14 @@ def main():
     api_url = os.getenv('MEMOS_API')
     memos_token = os.getenv('MEMOS_TOKEN')
 
-    target_dir = os.path.join(output_dir, memos_dir)
+    daily_dir = os.path.join(output_dir, memos_dir, "1.Daily")
+    os.makedirs(daily_dir, exist_ok=True)
+    weekly_dir = os.path.join(output_dir, memos_dir, "2.Weekly")
+    os.makedirs(weekly_dir, exist_ok=True)
 
-    memos = fetch_memos(api_url, memos_token, limit=50, offset=0, rowStatus="NORMAL")
-    export_weekly_memos_summary(memos, target_dir)
+    memos = fetch_memos(api_url, memos_token, limit=10, offset=0, rowStatus="NORMAL")
+    export_daily_memos(memos, daily_dir)
+    export_weekly_memos_summary(memos, weekly_dir)
 
 if __name__ == "__main__":
     main() 
