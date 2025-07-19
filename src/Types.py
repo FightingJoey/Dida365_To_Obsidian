@@ -41,7 +41,6 @@ class Tag:
         """
         return {key: value for key, value in self.__dict__.items() if value is not None}        
 
-
 class Project:
     """
     项目类，表示滴答清单中的一个项目（清单）
@@ -297,3 +296,47 @@ class Habit:
             dict: 包含习惯非空属性的字典
         """
         return {key: value for key, value in self.__dict__.items() if value is not None}
+
+class MemosResource:
+    """
+    Memos 资源类，对应 MemosResource 类型
+    """
+    def __init__(self, resource_dict=None):
+        self.name = None  # 资源名称
+        self.externalLink = None  # 外部链接
+        self.type = None  # 资源类型
+        self.uid = None  # 用户ID
+        self.id = None  # 资源ID（字符串）
+        self.filename = None  # 文件名
+        self.size = None  # 文件大小（数字）
+        if resource_dict:
+            self.__dict__.update(resource_dict)
+
+    def to_dict(self):
+        return {key: value for key, value in self.__dict__.items() if value is not None}
+
+class MemosRecord:
+    """
+    Memos 记录类，对应 MemosRecord 类型
+    """
+    def __init__(self, record_dict=None):
+        self.rowStatus = None  # "ARCHIVED" | "ACTIVE" | "NORMAL"
+        self.updatedTs = None  # 更新时间戳
+        self.createdTs = None  # 创建时间戳
+        self.createdAt = None  # 创建时间字符串
+        self.updatedAt = None  # 更新时间字符串
+        self.content = None  # 内容
+        self.resourceList = []  # 资源列表（MemosResource 实例列表）
+        if record_dict:
+            # 资源列表需要特殊处理
+            if 'resourceList' in record_dict and record_dict['resourceList']:
+                self.resourceList = [MemosResource(r) for r in record_dict['resourceList']]
+                record_dict = dict(record_dict)
+                record_dict.pop('resourceList')
+            self.__dict__.update(record_dict)
+
+    def to_dict(self):
+        d = {key: value for key, value in self.__dict__.items() if value is not None and key != 'resourceList'}
+        if self.resourceList:
+            d['resourceList'] = [r.to_dict() for r in self.resourceList]
+        return d
