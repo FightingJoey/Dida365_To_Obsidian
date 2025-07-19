@@ -1,7 +1,7 @@
 import requests
 import os
 from Types import MemosRecord
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
 # 加载 .env 文件
@@ -31,9 +31,9 @@ def export_weekly_memos_summary(memos, output_dir):
         print("没有 Memos 数据")
         return
     # 获取本周起止时间（周一到周日）
-    now = datetime.now()
+    now = datetime.now(timezone(timedelta(hours=8)))
     start_date = now - timedelta(days=now.weekday())
-    start_date = datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0)
+    start_date = datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0, tzinfo=timezone(timedelta(hours=8)))
     end_date = start_date + timedelta(days=6, hours=23, minutes=59, seconds=59)
     iso_year, week_num, _ = now.isocalendar()
     filename = f"{iso_year}-W{week_num:02d}-Memos.md"
@@ -48,7 +48,7 @@ def export_weekly_memos_summary(memos, output_dir):
     for memo in memos:
         if not memo.createdTs:
             continue
-        dt = datetime.fromtimestamp(memo.createdTs)
+        dt = datetime.fromtimestamp(memo.createdTs, tz=timezone.utc) + timedelta(hours=8)
         if start_date <= dt <= end_date:
             date_str = dt.strftime('%Y-%m-%d')
             if date_str in memos_by_day:
@@ -61,7 +61,7 @@ def export_weekly_memos_summary(memos, output_dir):
         if day_memos:
             day_memos_sorted = sorted(day_memos, key=lambda m: m.createdTs or 0)
             for memo in day_memos_sorted:
-                dt = datetime.fromtimestamp(memo.createdTs)
+                dt = datetime.fromtimestamp(memo.createdTs, tz=timezone.utc) + timedelta(hours=8)
                 time_str = dt.strftime('%H:%M')
                 memo_lines = (memo.content or '').strip().split('\n')
                 target_first_line = f"- {time_str} "
@@ -89,7 +89,7 @@ def export_daily_memos(memos, daily_dir):
     for memo in memos:
         if not memo.createdTs:
             continue
-        dt = datetime.fromtimestamp(memo.createdTs)
+        dt = datetime.fromtimestamp(memo.createdTs, tz=timezone.utc) + timedelta(hours=8)
         date_str = dt.strftime('%Y-%m-%d')
         if date_str not in memos_by_day:
             memos_by_day[date_str] = []
@@ -102,7 +102,7 @@ def export_daily_memos(memos, daily_dir):
             filepath = os.path.join(daily_dir, filename)
             content = ""
             for memo in day_memos_sorted:
-                dt = datetime.fromtimestamp(memo.createdTs)
+                dt = datetime.fromtimestamp(memo.createdTs, tz=timezone.utc) + timedelta(hours=8)
                 time_str = dt.strftime('%H:%M')
                 memo_lines = (memo.content or '').strip().split('\n')
                 target_first_line = f"- {time_str} "
@@ -132,7 +132,7 @@ def main():
     weekly_dir = os.path.join(output_dir, memos_dir, "2.Weekly")
     os.makedirs(weekly_dir, exist_ok=True)
 
-    memos = fetch_memos(api_url, memos_token, limit=10, offset=0, rowStatus="NORMAL")
+    memos = fetch_memos(api_url, memos_token, limit=20, offset=0, rowStatus="NORMAL")
     export_daily_memos(memos, daily_dir)
     export_weekly_memos_summary(memos, weekly_dir)
 
