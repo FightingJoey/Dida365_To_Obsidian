@@ -111,12 +111,12 @@ class Exporter:
         
         if start_date and end_date:
             if start_date == end_date:
-                return f"📅 {start_date}"
-            return f"📅 {start_date} ~ {end_date}"
+                return f"📅 {end_date}"
+            return f"🛫 {start_date} ~ 📅 {end_date}"
         elif start_date:
-            return f"📅 从 {start_date} 开始"
+            return f"🛫 {start_date}"
         elif end_date:
-            return f"📅 至 {end_date}"
+            return f"📅 {end_date}"
         return ""
 
     def _get_priority_mark(self, priority: int) -> str:
