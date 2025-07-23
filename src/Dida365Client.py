@@ -3,6 +3,7 @@ import json
 import os
 from typing import List, Dict, Optional
 from dotenv import load_dotenv, set_key
+from datetime import datetime, timedelta  # 新增：用于时间处理
 
 # 加载 .env 文件
 load_dotenv()
@@ -37,13 +38,19 @@ class Dida365Client:
         }
         self.token: Optional[str] = None
         self.inbox_id: Optional[str] = None
-        # 优先尝试从 .env 读取 token
+        self.last_login_time: Optional[datetime] = None  # 新增：存储上次登录时间
+        # 优先尝试从 .env 读取 token 和上次登录时间
         self._load_token_from_env()
         if not self.token:
             self.login()
         else:
-            print("使用本地保存的Token")
-            self.headers["Cookie"] = f"t={self.token}"
+            # 检查上次登录时间是否超过一天
+            if self.last_login_time and (datetime.now() - self.last_login_time) > timedelta(days=1):
+                print("Token已过期（超过一天），重新登录")
+                self.login()
+            else:
+                print("使用本地保存的Token")
+                self.headers["Cookie"] = f"t={self.token}"
 
     def _load_token_from_env(self):
         self.token = os.getenv("DIDA365_TOKEN")
@@ -52,19 +59,27 @@ class Dida365Client:
             self.token = None
         if self.inbox_id == "None":
             self.inbox_id = None
+        # 加载上次登录时间
+        last_login_str = os.getenv("DIDA365_LAST_LOGIN_TIME")
+        if last_login_str:
+            try:
+                self.last_login_time = datetime.fromisoformat(last_login_str)
+            except ValueError:
+                pass
 
     def _save_token_to_env(self):
-        # 更新 .env 文件中的 DIDA365_TOKEN
+        # 更新 .env 文件中的 DIDA365_TOKEN 和上次登录时间
         assert self.token is not None, "Token不能为空"
         assert self.inbox_id is not None, "InboxID不能为空"
         try:
             set_key(ENV_FILE, "DIDA365_TOKEN", self.token)
             set_key(ENV_FILE, "DIDA365_INBOX_ID", self.inbox_id)
+            set_key(ENV_FILE, "DIDA365_LAST_LOGIN_TIME", datetime.now().isoformat())
         except Exception as e:
             print(f"保存 token 到 .env 失败: {e}")
 
     def login(self):
-        """登录获取token"""
+        """登录获取token并更新登录时间"""
         print("登录获取Token")
         url = f"{self.base_url}/user/signon?wc=true&remember=true"
         payload = {
@@ -83,6 +98,7 @@ class Dida365Client:
         self.inbox_id = data["inboxId"]
         # 在后续请求中设置Cookie
         self.headers["Cookie"] = f"t={self.token}"
+        self.last_login_time = datetime.now()  # 更新登录时间
         self._save_token_to_env()
 
     def _make_request(self, method: str, endpoint: str, params=None, data=None) -> Dict:

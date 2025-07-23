@@ -210,12 +210,15 @@ class Exporter:
         # 添加任务描述
         if task.content:
             content += f"{task.content}\n\n"
+
+        if task.desc:
+            content += f"{task.desc}\n\n"
         
         # 添加任务列表
         if task.items:
             content += "## 任务列表\n\n"
             for item in task.items:
-                status = "✓" if item.get("status") == 1 else " "
+                status = "✓" if item.get("status") == 2 else " "
                 content += f"- [{status}] {item.get('title', '')}\n"
 
         # 添加子任务列表

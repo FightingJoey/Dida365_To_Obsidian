@@ -207,6 +207,8 @@ class Task:
         # 任务描述内容（字符串，可为空）
         self.content = None  
 
+        self.desc = None
+
         self.childIds = []
 
         self.parentId = ''
