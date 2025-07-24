@@ -218,8 +218,8 @@ class Exporter:
         if task.items:
             content += "## 任务列表\n\n"
             for item in task.items:
-                status = "✓" if item.get("status") == 2 else " "
-                content += f"- [{status}] {item.get('title', '')}\n"
+                status = "x" if item["status"] == 2 else " "
+                content += f"- [{status}] {item['title']}\n"
 
         # 添加子任务列表
         if task.childIds:
